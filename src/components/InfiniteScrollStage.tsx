@@ -8,7 +8,7 @@ import {
 } from '../hooks/useLenisInfiniteScroll'
 import { useLoaderRotation } from '../hooks/useLoaderRotation'
 import { useCoverAnchorPosition } from '../hooks/useCoverAnchorPosition'
-import { encodeAssetPath, parseGifMeta } from '../lib/gifMeta'
+import { encodeAssetPath, parseGifMeta, toBaseAssetPath } from '../lib/gifMeta'
 import { useUnlockedGifsStore } from '../store/unlockedGifsStore'
 
 type ManifestEntry = {
@@ -206,7 +206,9 @@ export function InfiniteScrollStage() {
 
     const loadManifest = async () => {
       try {
-        const manifestResponse = await fetch('/collections-manifest.json', { cache: 'no-store' })
+        const manifestResponse = await fetch(toBaseAssetPath('/collections-manifest.json'), {
+          cache: 'no-store',
+        })
         if (manifestResponse.ok) {
           const payload = (await manifestResponse.json()) as {
             total?: unknown
@@ -257,7 +259,9 @@ export function InfiniteScrollStage() {
           pathsRef.current.length === 0 &&
           Object.keys(manifestByNumberRef.current).length === 0
         ) {
-          const indexResponse = await fetch('/collections-index.json', { cache: 'no-store' })
+          const indexResponse = await fetch(toBaseAssetPath('/collections-index.json'), {
+            cache: 'no-store',
+          })
           if (indexResponse.ok) {
             const indexPayload = (await indexResponse.json()) as {
               total?: unknown

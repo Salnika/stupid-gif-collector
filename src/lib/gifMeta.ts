@@ -4,6 +4,8 @@ export type GifMeta = {
   collection: string
 }
 
+const EXTERNAL_URL_PATTERN = /^[a-z]+:\/\//i
+
 const safeDecodeURIComponent = (value: string): string => {
   try {
     return decodeURIComponent(value)
@@ -12,8 +14,24 @@ const safeDecodeURIComponent = (value: string): string => {
   }
 }
 
-export const encodeAssetPath = (assetPath: string): string =>
-  assetPath
+export const toBaseAssetPath = (assetPath: string): string => {
+  if (!assetPath || EXTERNAL_URL_PATTERN.test(assetPath)) {
+    return assetPath
+  }
+
+  const base = import.meta.env.BASE_URL || '/'
+  const normalizedBase = base.endsWith('/') ? base : `${base}/`
+  const relativePath = assetPath.replace(/^\/+/, '')
+
+  return `${normalizedBase}${relativePath}`
+}
+
+export const encodeAssetPath = (assetPath: string): string => {
+  if (!assetPath || EXTERNAL_URL_PATTERN.test(assetPath)) {
+    return assetPath
+  }
+
+  const encodedPath = assetPath
     .split('/')
     .map((segment) => {
       try {
@@ -23,6 +41,9 @@ export const encodeAssetPath = (assetPath: string): string =>
       }
     })
     .join('/')
+
+  return toBaseAssetPath(encodedPath)
+}
 
 export const parseGifMeta = (assetPath: string, fallbackNumber: number): GifMeta => {
   const cleanPath = assetPath.split('?')[0].split('#')[0]

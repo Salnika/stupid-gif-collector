@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "generate:collections-index": "node scripts/generate-collections-index.mjs",
-    "build": "tsc -b && vite build",
+    "build": "yarn generate:collections-index && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
