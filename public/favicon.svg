@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="GIF Collector icon">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14b8a6" />
+      <stop offset="100%" stop-color="#22c55e" />
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#bg)" />
+  <rect x="10" y="10" width="44" height="44" rx="10" fill="#0f172a" fill-opacity="0.88" />
+  <path d="M22 22h20v6H28v8h12v6H28v8h14v6H22z" fill="#ecfeff" />
+</svg>
