@@ -4,8 +4,9 @@ import path from 'node:path'
 const PROJECT_ROOT = process.cwd()
 const PUBLIC_ROOT = path.join(PROJECT_ROOT, 'public')
 const COLLECTIONS_ROOT = path.join(PUBLIC_ROOT, 'collections')
-const OUTPUT_FILE = path.join(PUBLIC_ROOT, 'collections-index.json')
-const PREFIX_PATTERN = /^(?:#)?(\d+)-/i
+const INDEX_OUTPUT_FILE = path.join(PUBLIC_ROOT, 'collections-index.json')
+const MANIFEST_OUTPUT_FILE = path.join(PUBLIC_ROOT, 'collections-manifest.json')
+const PREFIX_PATTERN = /^(?:#)?(\d+)-(.*)$/i
 
 const walkFiles = async (directory) => {
   const entries = await readdir(directory, { withFileTypes: true })
@@ -24,6 +25,7 @@ const walkFiles = async (directory) => {
 }
 
 const encodePathSegment = (segment) => encodeURIComponent(segment)
+const toDisplayText = (value) => value.replace(/[_-]+/g, ' ').trim()
 
 const toPublicPath = (absolutePath) => {
   const relativePath = path.relative(PUBLIC_ROOT, absolutePath)
@@ -36,6 +38,7 @@ const buildIndex = async () => {
   const gifFiles = allFiles.filter((filePath) => filePath.toLowerCase().endsWith('.gif'))
 
   const indexedPaths = []
+  const byNumber = {}
   for (const filePath of gifFiles) {
     const fileName = path.basename(filePath)
     const match = fileName.match(PREFIX_PATTERN)
@@ -48,11 +51,21 @@ const buildIndex = async () => {
       throw new Error(`Invalid index in filename: ${fileName}`)
     }
 
+    const encodedPath = toPublicPath(filePath)
+    const rawName = (match[2] ?? fileName).replace(/\.[^.]+$/, '')
+    const collectionFolder = path.basename(path.dirname(filePath))
+
     if (indexedPaths[index - 1] !== undefined) {
       throw new Error(`Duplicate index #${index}: ${indexedPaths[index - 1]} and ${filePath}`)
     }
 
-    indexedPaths[index - 1] = toPublicPath(filePath)
+    indexedPaths[index - 1] = encodedPath
+    byNumber[index] = {
+      number: index,
+      path: encodedPath,
+      name: toDisplayText(rawName),
+      collection: toDisplayText(collectionFolder),
+    }
   }
 
   const missingIndexes = []
@@ -69,13 +82,20 @@ const buildIndex = async () => {
     throw new Error(`Missing indexes detected (first 20): ${missingIndexes.join(', ')}`)
   }
 
-  const payload = {
+  const indexPayload = {
     total: indexedPaths.length,
     paths: indexedPaths,
   }
 
-  await writeFile(OUTPUT_FILE, JSON.stringify(payload))
-  console.log(`Generated ${OUTPUT_FILE} with ${indexedPaths.length} GIF entries`)
+  const manifestPayload = {
+    total: indexedPaths.length,
+    byNumber,
+  }
+
+  await writeFile(INDEX_OUTPUT_FILE, JSON.stringify(indexPayload))
+  await writeFile(MANIFEST_OUTPUT_FILE, JSON.stringify(manifestPayload))
+  console.log(`Generated ${INDEX_OUTPUT_FILE} with ${indexedPaths.length} GIF entries`)
+  console.log(`Generated ${MANIFEST_OUTPUT_FILE} with ${indexedPaths.length} GIF entries`)
 }
 
 await buildIndex()
