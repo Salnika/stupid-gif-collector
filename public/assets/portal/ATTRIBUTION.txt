@@ -1,0 +1,4 @@
+Asset: teleport-circle-spritesheet.png
+Source: https://opengameart.org/content/teleport-circle-0
+Original file URL: https://opengameart.org/sites/default/files/teleportCircle_0.png
+License on source page: CC0 (Public Domain)
