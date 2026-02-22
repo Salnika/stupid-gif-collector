@@ -16,6 +16,7 @@ const getDownloadFileName = (gif: UnlockedGif): string =>
 export function MyCollectionPage() {
   const unlockedByNumber = useUnlockedGifsStore((state) => state.unlockedByNumber)
   const [copiedEmbedFor, setCopiedEmbedFor] = useState<number | null>(null)
+  const [copiedShareFor, setCopiedShareFor] = useState<number | null>(null)
   const [rarityByNumber, setRarityByNumber] = useState<Record<number, GifRarity>>({})
 
   const sortedUnlockedGifs = useMemo(
@@ -89,6 +90,21 @@ export function MyCollectionPage() {
     }
   }
 
+  const handleCopyShareLink = async (gif: UnlockedGif) => {
+    const sharePath = toBaseAssetPath(`/share/${gif.number}`)
+    const shareUrl = new URL(sharePath, window.location.origin).toString()
+
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopiedShareFor(gif.number)
+      window.setTimeout(() => {
+        setCopiedShareFor((current) => (current === gif.number ? null : current))
+      }, 1200)
+    } catch {
+      // If clipboard fails, keep the UI stable without throwing.
+    }
+  }
+
   return (
     <main className="app app--collection">
       <section className="my-collection">
@@ -140,6 +156,13 @@ export function MyCollectionPage() {
                       onClick={() => void handleCopyEmbed(gif)}
                     >
                       {copiedEmbedFor === gif.number ? 'Copied!' : 'Copy embed'}
+                    </button>
+                    <button
+                      type="button"
+                      className="my-collection__action-btn my-collection__action-btn--secondary my-collection__action-btn--share"
+                      onClick={() => void handleCopyShareLink(gif)}
+                    >
+                      {copiedShareFor === gif.number ? 'Copied!' : 'Share'}
                     </button>
                   </div>
                 </article>

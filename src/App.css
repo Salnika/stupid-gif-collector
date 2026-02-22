@@ -240,8 +240,154 @@
   background: rgba(18, 28, 43, 0.9);
 }
 
+.my-collection__action-btn--share {
+  grid-column: 1 / -1;
+}
+
 .my-collection__action-btn:hover {
   border-color: rgba(167, 243, 208, 0.75);
+}
+
+.app--share {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  padding: 1.2rem;
+}
+
+.shared-gif {
+  width: min(92vw, 560px);
+  display: grid;
+  justify-items: center;
+}
+
+.shared-gif__card {
+  --shared-rarity-color: rgba(143, 160, 183, 0.62);
+  margin: 0;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 0.86rem;
+  background: rgba(7, 14, 26, 0.84);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.24),
+    0 0 0 3px var(--shared-rarity-color),
+    0 24px 62px rgba(0, 0, 0, 0.5);
+}
+
+.shared-gif__card--rarity-common {
+  --shared-rarity-color: rgba(143, 160, 183, 0.62);
+}
+
+.shared-gif__card--rarity-uncommon {
+  --shared-rarity-color: rgba(85, 208, 145, 0.68);
+}
+
+.shared-gif__card--rarity-rare {
+  --shared-rarity-color: rgba(93, 168, 255, 0.72);
+}
+
+.shared-gif__card--rarity-epic {
+  --shared-rarity-color: rgba(199, 137, 255, 0.76);
+}
+
+.shared-gif__card--rarity-legendary {
+  --shared-rarity-color: rgba(246, 197, 111, 0.78);
+}
+
+.shared-gif__card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(64vh, 500px);
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.shared-gif__meta {
+  display: grid;
+  gap: 0.22rem;
+  margin: 0;
+  padding: 0.62rem 0.76rem 0.74rem;
+}
+
+.shared-gif__number,
+.shared-gif__name,
+.shared-gif__collection,
+.shared-gif__rarity {
+  margin: 0;
+}
+
+.shared-gif__number {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.72);
+}
+
+.shared-gif__name {
+  font-size: 0.9rem;
+  color: rgba(248, 250, 252, 0.98);
+}
+
+.shared-gif__collection,
+.shared-gif__rarity {
+  font-size: 0.8rem;
+  color: rgba(203, 213, 225, 0.88);
+}
+
+.shared-gif__rarity-value {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.shared-gif__rarity-value--common {
+  color: var(--rarity-common);
+}
+
+.shared-gif__rarity-value--uncommon {
+  color: var(--rarity-uncommon);
+}
+
+.shared-gif__rarity-value--rare {
+  color: var(--rarity-rare);
+}
+
+.shared-gif__rarity-value--epic {
+  color: var(--rarity-epic);
+}
+
+.shared-gif__rarity-value--legendary {
+  color: var(--rarity-legendary);
+}
+
+.shared-gif__state-block {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: center;
+}
+
+.shared-gif__state {
+  margin: 0;
+  font-size: 0.92rem;
+  color: rgba(226, 232, 240, 0.95);
+}
+
+.shared-gif__link {
+  min-height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.82rem;
+  border-radius: 0.48rem;
+  border: 1px solid rgba(226, 232, 240, 0.32);
+  background: rgba(8, 14, 24, 0.76);
+  color: rgba(241, 245, 249, 0.95);
+  text-decoration: none;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .scroll-stage {
