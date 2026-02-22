@@ -7,6 +7,27 @@ const COLLECTIONS_ROOT = path.join(PUBLIC_ROOT, 'collections')
 const INDEX_OUTPUT_FILE = path.join(PUBLIC_ROOT, 'collections-index.json')
 const MANIFEST_OUTPUT_FILE = path.join(PUBLIC_ROOT, 'collections-manifest.json')
 const PREFIX_PATTERN = /^(?:#)?(\d+)-(.*)$/i
+const DEFAULT_RARITY = 'common'
+
+const toCollectionRarity = (percentile) => {
+  if (percentile >= 0.6) {
+    return 'common'
+  }
+
+  if (percentile >= 0.35) {
+    return 'uncommon'
+  }
+
+  if (percentile >= 0.18) {
+    return 'rare'
+  }
+
+  if (percentile >= 0.08) {
+    return 'epic'
+  }
+
+  return 'legendary'
+}
 
 const walkFiles = async (directory) => {
   const entries = await readdir(directory, { withFileTypes: true })
@@ -37,8 +58,8 @@ const buildIndex = async () => {
   const allFiles = await walkFiles(COLLECTIONS_ROOT)
   const gifFiles = allFiles.filter((filePath) => filePath.toLowerCase().endsWith('.gif'))
 
+  const parsedEntries = []
   const indexedPaths = []
-  const byNumber = {}
   for (const filePath of gifFiles) {
     const fileName = path.basename(filePath)
     const match = fileName.match(PREFIX_PATTERN)
@@ -60,11 +81,44 @@ const buildIndex = async () => {
     }
 
     indexedPaths[index - 1] = encodedPath
-    byNumber[index] = {
+    parsedEntries.push({
       number: index,
       path: encodedPath,
       name: toDisplayText(rawName),
       collection: toDisplayText(collectionFolder),
+      collectionFolder,
+    })
+  }
+
+  const collectionSizes = {}
+  for (const entry of parsedEntries) {
+    collectionSizes[entry.collectionFolder] = (collectionSizes[entry.collectionFolder] ?? 0) + 1
+  }
+
+  const sortedCollections = Object.entries(collectionSizes).sort((a, b) => {
+    if (a[1] !== b[1]) {
+      return a[1] - b[1]
+    }
+
+    return a[0].localeCompare(b[0])
+  })
+
+  const rarityByCollection = {}
+  const collectionCount = sortedCollections.length
+  for (let index = 0; index < collectionCount; index += 1) {
+    const [collectionFolder] = sortedCollections[index]
+    const percentile = collectionCount > 1 ? index / (collectionCount - 1) : 1
+    rarityByCollection[collectionFolder] = toCollectionRarity(percentile)
+  }
+
+  const byNumber = {}
+  for (const entry of parsedEntries) {
+    byNumber[entry.number] = {
+      number: entry.number,
+      path: entry.path,
+      name: entry.name,
+      collection: entry.collection,
+      rarity: rarityByCollection[entry.collectionFolder] ?? DEFAULT_RARITY,
     }
   }
 

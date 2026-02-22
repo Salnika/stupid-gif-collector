@@ -1,5 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Metamorphous&family=Noto+Sans+Runic&display=swap');
 
+:root {
+  --rarity-common: #8fa0b7;
+  --rarity-uncommon: #55d091;
+  --rarity-rare: #5da8ff;
+  --rarity-epic: #c789ff;
+  --rarity-legendary: #f6c56f;
+}
+
 .app {
   width: 100%;
   height: 100%;
@@ -260,6 +268,7 @@
 }
 
 .scroll-stage__selected-card {
+  --card-rarity-color: rgba(143, 160, 183, 0.58);
   position: absolute;
   top: 50%;
   left: 50%;
@@ -271,8 +280,30 @@
   background: rgba(7, 14, 26, 0.78);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.26),
+    0 0 0 3px var(--card-rarity-color),
+    0 0 28px var(--card-rarity-color),
     0 22px 58px rgba(0, 0, 0, 0.48);
   z-index: 47;
+}
+
+.scroll-stage__selected-card--rarity-common {
+  --card-rarity-color: rgba(143, 160, 183, 0.62);
+}
+
+.scroll-stage__selected-card--rarity-uncommon {
+  --card-rarity-color: rgba(85, 208, 145, 0.68);
+}
+
+.scroll-stage__selected-card--rarity-rare {
+  --card-rarity-color: rgba(93, 168, 255, 0.72);
+}
+
+.scroll-stage__selected-card--rarity-epic {
+  --card-rarity-color: rgba(199, 137, 255, 0.76);
+}
+
+.scroll-stage__selected-card--rarity-legendary {
+  --card-rarity-color: rgba(246, 197, 111, 0.78);
 }
 
 .scroll-stage__count-badge {
@@ -310,7 +341,8 @@
 
 .scroll-stage__card-number,
 .scroll-stage__card-name,
-.scroll-stage__card-collection {
+.scroll-stage__card-collection,
+.scroll-stage__card-rarity {
   margin: 0;
 }
 
@@ -329,6 +361,36 @@
 .scroll-stage__card-collection {
   font-size: 0.78rem;
   color: rgba(203, 213, 225, 0.85);
+}
+
+.scroll-stage__card-rarity {
+  font-size: 0.76rem;
+  color: rgba(203, 213, 225, 0.86);
+}
+
+.scroll-stage__card-rarity-value {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.scroll-stage__card-rarity-value--common {
+  color: var(--rarity-common);
+}
+
+.scroll-stage__card-rarity-value--uncommon {
+  color: var(--rarity-uncommon);
+}
+
+.scroll-stage__card-rarity-value--rare {
+  color: var(--rarity-rare);
+}
+
+.scroll-stage__card-rarity-value--epic {
+  color: var(--rarity-epic);
+}
+
+.scroll-stage__card-rarity-value--legendary {
+  color: var(--rarity-legendary);
 }
 
 .scroll-stage__popup {

@@ -9,6 +9,12 @@ import {
 import { useLoaderRotation } from '../hooks/useLoaderRotation'
 import { useCoverAnchorPosition } from '../hooks/useCoverAnchorPosition'
 import { encodeAssetPath, parseGifMeta, toBaseAssetPath } from '../lib/gifMeta'
+import {
+  DEFAULT_GIF_RARITY,
+  isGifRarity,
+  toGifRarityLabel,
+  type GifRarity,
+} from '../lib/rarity'
 import { useUnlockedGifsStore } from '../store/unlockedGifsStore'
 
 type ManifestEntry = {
@@ -16,6 +22,7 @@ type ManifestEntry = {
   path: string
   name: string
   collection: string
+  rarity: GifRarity
 }
 
 type RewardResult = {
@@ -53,6 +60,7 @@ const toManifestEntryFromPath = (gifNumber: number, path: string): ManifestEntry
     path,
     name: meta.name,
     collection: meta.collection,
+    rarity: DEFAULT_GIF_RARITY,
   }
 }
 
@@ -69,6 +77,7 @@ const normalizeManifestEntry = (
     path?: unknown
     name?: unknown
     collection?: unknown
+    rarity?: unknown
   }
 
   if (typeof value.path !== 'string' || value.path.length === 0) {
@@ -87,12 +96,14 @@ const normalizeManifestEntry = (
     typeof value.collection === 'string' && value.collection.trim().length > 0
       ? value.collection
       : parsedMeta.collection
+  const entryRarity = isGifRarity(value.rarity) ? value.rarity : DEFAULT_GIF_RARITY
 
   return {
     number: entryNumber,
     path: value.path,
     name: entryName,
     collection: entryCollection,
+    rarity: entryRarity,
   }
 }
 
@@ -444,7 +455,9 @@ export function InfiniteScrollStage() {
         <p className="scroll-stage__attempt">{attemptLabel}</p>
 
         {!showRewardPopup && !isScrolling && currentCandidate ? (
-          <figure className="scroll-stage__selected-card">
+          <figure
+            className={`scroll-stage__selected-card scroll-stage__selected-card--rarity-${currentCandidate.rarity}`}
+          >
             {isCurrentCandidateNew ? (
               <p className="scroll-stage__new-flag scroll-stage__new-flag--hero">New!</p>
             ) : null}
@@ -460,6 +473,14 @@ export function InfiniteScrollStage() {
               <p className="scroll-stage__card-name">{currentCandidate.name}</p>
               <p className="scroll-stage__card-collection">
                 Collection: {currentCandidate.collection}
+              </p>
+              <p className="scroll-stage__card-rarity">
+                Rarity:{' '}
+                <span
+                  className={`scroll-stage__card-rarity-value scroll-stage__card-rarity-value--${currentCandidate.rarity}`}
+                >
+                  {toGifRarityLabel(currentCandidate.rarity)}
+                </span>
               </p>
             </figcaption>
           </figure>
@@ -487,7 +508,9 @@ export function InfiniteScrollStage() {
             {rewardResult.isNew ? (
               <p className="scroll-stage__new-flag scroll-stage__new-flag--popup">New!</p>
             ) : null}
-            <figure className="scroll-stage__selected-card scroll-stage__selected-card--popup">
+            <figure
+              className={`scroll-stage__selected-card scroll-stage__selected-card--popup scroll-stage__selected-card--rarity-${rewardResult.entry.rarity}`}
+            >
               {rewardResult.count >= 2 ? (
                 <span className="scroll-stage__count-badge">x{rewardResult.count}</span>
               ) : null}
@@ -500,6 +523,14 @@ export function InfiniteScrollStage() {
                 <p className="scroll-stage__card-name">{rewardResult.entry.name}</p>
                 <p className="scroll-stage__card-collection">
                   Collection: {rewardResult.entry.collection}
+                </p>
+                <p className="scroll-stage__card-rarity">
+                  Rarity:{' '}
+                  <span
+                    className={`scroll-stage__card-rarity-value scroll-stage__card-rarity-value--${rewardResult.entry.rarity}`}
+                  >
+                    {toGifRarityLabel(rewardResult.entry.rarity)}
+                  </span>
                 </p>
               </figcaption>
             </figure>
