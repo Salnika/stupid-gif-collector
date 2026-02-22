@@ -5,6 +5,24 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Stupid GIF Collector</title>
+    <script>
+      // Restore clean SPA route after GitHub Pages 404 redirect.
+      ;(function (location) {
+        if (location.search.length > 1 && location.search[1] === '/') {
+          const decoded = location.search
+            .slice(1)
+            .split('&')
+            .map((part) => part.replace(/~and~/g, '&'))
+            .join('?')
+
+          window.history.replaceState(
+            null,
+            '',
+            location.pathname.slice(0, -1) + decoded + location.hash,
+          )
+        }
+      })(window.location)
+    </script>
     <script
       data-goatcounter="https://salnika.goatcounter.com/count"
       async

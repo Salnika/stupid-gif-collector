@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Stupid GIF Collector</title>
+    <script>
+      // Redirect unknown paths to index while preserving route for BrowserRouter.
+      ;(function () {
+        const location = window.location
+        const firstPathSegment = location.pathname.split('/').filter(Boolean)[0] ?? ''
+        const pathSegmentsToKeep = firstPathSegment === 'stupid-gif-collector' ? 1 : 0
+        const targetPath = location.pathname
+          .split('/')
+          .slice(1 + pathSegmentsToKeep)
+          .join('/')
+          .replace(/&/g, '~and~')
+
+        const search = location.search
+          ? '&' + location.search.slice(1).replace(/&/g, '~and~')
+          : ''
+
+        const redirectUrl =
+          location.protocol +
+          '//' +
+          location.hostname +
+          (location.port ? ':' + location.port : '') +
+          location.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') +
+          '/?/' +
+          targetPath +
+          search +
+          location.hash
+
+        location.replace(redirectUrl)
+      })()
+    </script>
+  </head>
+  <body></body>
+</html>
