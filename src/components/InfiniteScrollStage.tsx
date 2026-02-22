@@ -168,6 +168,7 @@ export function InfiniteScrollStage() {
         number: entry.number,
         name: entry.name,
         collection: entry.collection,
+        rarity: entry.rarity,
         path: entry.path,
       })
 

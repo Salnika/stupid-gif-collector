@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { DEFAULT_GIF_RARITY, isGifRarity, type GifRarity } from '../lib/rarity'
 
 const normalizeGifPath = (value: string): string =>
   value.replace(/\/%23(\d+-)/gi, '/$1').replace(/\/#(\d+-)/g, '/$1')
@@ -8,6 +9,7 @@ export type UnlockedGif = {
   number: number
   name: string
   collection: string
+  rarity: GifRarity
   path: string
   unlockedAt: number
   count: number
@@ -17,6 +19,7 @@ type RegisterCaughtGifInput = {
   number: number
   name: string
   collection: string
+  rarity: GifRarity
   path: string
 }
 
@@ -45,6 +48,7 @@ export const useUnlockedGifsStore = create<UnlockedGifsState>()(
             number: gif.number,
             name: gif.name,
             collection: gif.collection,
+            rarity: gif.rarity,
             path: normalizeGifPath(gif.path),
             unlockedAt: current?.unlockedAt ?? Date.now(),
             count: nextCount,
@@ -70,6 +74,7 @@ export const useUnlockedGifsStore = create<UnlockedGifsState>()(
               number: gif.number,
               name: gif.name,
               collection: gif.collection,
+              rarity: gif.rarity,
               path: normalizeGifPath(gif.path),
               unlockedAt: Date.now(),
               count: 1,
@@ -83,7 +88,7 @@ export const useUnlockedGifsStore = create<UnlockedGifsState>()(
     {
       name: 'stupid-vite-collect-unlocked-gifs',
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       migrate: (persistedState) => {
         const state = persistedState as {
           unlockedByNumber?: Record<string, Partial<UnlockedGif>>
@@ -107,6 +112,7 @@ export const useUnlockedGifsStore = create<UnlockedGifsState>()(
             number: numberFromValue,
             name: typeof value.name === 'string' ? value.name : `GIF ${numberFromValue}`,
             collection: typeof value.collection === 'string' ? value.collection : 'unknown',
+            rarity: isGifRarity(value.rarity) ? value.rarity : DEFAULT_GIF_RARITY,
             path: typeof value.path === 'string' ? normalizeGifPath(value.path) : '',
             unlockedAt: typeof value.unlockedAt === 'number' ? value.unlockedAt : Date.now(),
             count: typeof value.count === 'number' && value.count > 0 ? value.count : 1,

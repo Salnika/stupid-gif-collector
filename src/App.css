@@ -94,6 +94,7 @@
 }
 
 .my-collection__card {
+  --my-card-rarity-color: rgba(143, 160, 183, 0.58);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -102,7 +103,28 @@
   background: rgba(7, 14, 26, 0.83);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.24),
+    0 0 0 2px var(--my-card-rarity-color),
     0 14px 36px rgba(0, 0, 0, 0.42);
+}
+
+.my-collection__card--rarity-common {
+  --my-card-rarity-color: rgba(143, 160, 183, 0.62);
+}
+
+.my-collection__card--rarity-uncommon {
+  --my-card-rarity-color: rgba(85, 208, 145, 0.68);
+}
+
+.my-collection__card--rarity-rare {
+  --my-card-rarity-color: rgba(93, 168, 255, 0.72);
+}
+
+.my-collection__card--rarity-epic {
+  --my-card-rarity-color: rgba(199, 137, 255, 0.76);
+}
+
+.my-collection__card--rarity-legendary {
+  --my-card-rarity-color: rgba(246, 197, 111, 0.78);
 }
 
 .my-collection__count-badge {
@@ -138,7 +160,8 @@
 
 .my-collection__number,
 .my-collection__name,
-.my-collection__folder {
+.my-collection__folder,
+.my-collection__rarity {
   margin: 0;
 }
 
@@ -157,6 +180,36 @@
 .my-collection__folder {
   font-size: 0.75rem;
   color: rgba(203, 213, 225, 0.85);
+}
+
+.my-collection__rarity {
+  font-size: 0.75rem;
+  color: rgba(203, 213, 225, 0.85);
+}
+
+.my-collection__rarity-value {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.my-collection__rarity-value--common {
+  color: var(--rarity-common);
+}
+
+.my-collection__rarity-value--uncommon {
+  color: var(--rarity-uncommon);
+}
+
+.my-collection__rarity-value--rare {
+  color: var(--rarity-rare);
+}
+
+.my-collection__rarity-value--epic {
+  color: var(--rarity-epic);
+}
+
+.my-collection__rarity-value--legendary {
+  color: var(--rarity-legendary);
 }
 
 .my-collection__actions {
