@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { encodeAssetPath, toBaseAssetPath } from '../lib/gifMeta'
 import {
   DEFAULT_GIF_RARITY,
@@ -17,6 +17,7 @@ export function MyCollectionPage() {
   const unlockedByNumber = useUnlockedGifsStore((state) => state.unlockedByNumber)
   const [copiedEmbedFor, setCopiedEmbedFor] = useState<number | null>(null)
   const [copiedShareFor, setCopiedShareFor] = useState<number | null>(null)
+  const [selectedGif, setSelectedGif] = useState<UnlockedGif | null>(null)
   const [rarityByNumber, setRarityByNumber] = useState<Record<number, GifRarity>>({})
 
   const sortedUnlockedGifs = useMemo(
@@ -26,6 +27,9 @@ export function MyCollectionPage() {
 
   const unlockedCount = sortedUnlockedGifs.length
   const unlockedSummary = `${unlockedCount}/${TOTAL_GIFS} unlocked`
+  const selectedGifRarity = selectedGif
+    ? rarityByNumber[selectedGif.number] ?? selectedGif.rarity ?? DEFAULT_GIF_RARITY
+    : DEFAULT_GIF_RARITY
 
   useEffect(() => {
     let cancelled = false
@@ -75,6 +79,23 @@ export function MyCollectionPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!selectedGif) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelectedGif(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [selectedGif])
+
   const handleCopyEmbed = async (gif: UnlockedGif) => {
     const gifUrl = `${window.location.origin}${encodeAssetPath(gif.path)}`
     const embedCode = `<img src="${gifUrl}" alt="${gif.name}" />`
@@ -105,6 +126,17 @@ export function MyCollectionPage() {
     }
   }
 
+  const handleCardKeyDown = (event: ReactKeyboardEvent<HTMLElement>, gif: UnlockedGif) => {
+    if (event.target !== event.currentTarget) {
+      return
+    }
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      setSelectedGif(gif)
+    }
+  }
+
   return (
     <main className="app app--collection">
       <section className="my-collection">
@@ -126,6 +158,11 @@ export function MyCollectionPage() {
                 <article
                   className={`my-collection__card my-collection__card--rarity-${rarity}`}
                   key={gif.number}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open GIF #${gif.number}`}
+                  onClick={() => setSelectedGif(gif)}
+                  onKeyDown={(event) => handleCardKeyDown(event, gif)}
                 >
                   {gif.count >= 2 ? (
                     <span className="my-collection__count-badge">x{gif.count}</span>
@@ -142,7 +179,11 @@ export function MyCollectionPage() {
                       </span>
                     </p>
                   </div>
-                  <div className="my-collection__actions">
+                  <div
+                    className="my-collection__actions"
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
+                  >
                     <a
                       className="my-collection__action-btn"
                       href={encodeAssetPath(gif.path)}
@@ -170,6 +211,48 @@ export function MyCollectionPage() {
             })}
           </div>
         )}
+
+        {selectedGif ? (
+          <div
+            className="my-collection__modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`GIF #${selectedGif.number}`}
+            onClick={() => setSelectedGif(null)}
+          >
+            <article
+              className={`my-collection__modal-card my-collection__card my-collection__card--rarity-${selectedGifRarity}`}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {selectedGif.count >= 2 ? (
+                <span className="my-collection__count-badge">x{selectedGif.count}</span>
+              ) : null}
+              <img src={encodeAssetPath(selectedGif.path)} alt={`GIF #${selectedGif.number}`} />
+              <div className="my-collection__meta">
+                <p className="my-collection__number">#{selectedGif.number}</p>
+                <p className="my-collection__name">{selectedGif.name}</p>
+                <p className="my-collection__folder">Collection: {selectedGif.collection}</p>
+                <p className="my-collection__rarity">
+                  Rarity:{' '}
+                  <span
+                    className={`my-collection__rarity-value my-collection__rarity-value--${selectedGifRarity}`}
+                  >
+                    {toGifRarityLabel(selectedGifRarity)}
+                  </span>
+                </p>
+              </div>
+              <div className="my-collection__modal-actions">
+                <button
+                  type="button"
+                  className="my-collection__action-btn my-collection__action-btn--secondary"
+                  onClick={() => setSelectedGif(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </article>
+          </div>
+        ) : null}
       </section>
     </main>
   )

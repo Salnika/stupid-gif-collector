@@ -105,6 +105,12 @@
     0 0 0 1px rgba(255, 255, 255, 0.24),
     0 0 0 2px var(--my-card-rarity-color),
     0 14px 36px rgba(0, 0, 0, 0.42);
+  cursor: zoom-in;
+}
+
+.my-collection__card:focus-visible {
+  outline: 2px solid rgba(167, 243, 208, 0.9);
+  outline-offset: 2px;
 }
 
 .my-collection__card--rarity-common {
@@ -246,6 +252,34 @@
 
 .my-collection__action-btn:hover {
   border-color: rgba(167, 243, 208, 0.75);
+}
+
+.my-collection__modal {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(2, 6, 23, 0.75);
+  backdrop-filter: blur(3px);
+}
+
+.my-collection__modal-card {
+  width: min(92vw, 660px);
+  max-height: 90vh;
+  cursor: default;
+}
+
+.my-collection__modal-card img {
+  height: auto;
+  max-height: min(64vh, 520px);
+}
+
+.my-collection__modal-actions {
+  padding: 0 0.62rem 0.62rem;
+  display: grid;
+  grid-template-columns: 1fr;
 }
 
 .app--share {
@@ -641,6 +675,8 @@
 .scroll-stage__popup-actions {
   display: flex;
   gap: 0.55rem;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .scroll-stage__candidate-actions {

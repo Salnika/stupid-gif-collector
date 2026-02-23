@@ -132,6 +132,7 @@ export function InfiniteScrollStage() {
   const [currentCandidate, setCurrentCandidate] = useState<ManifestEntry | null>(null)
   const [showRewardPopup, setShowRewardPopup] = useState(false)
   const [rewardResult, setRewardResult] = useState<RewardResult | null>(null)
+  const [copiedShareFor, setCopiedShareFor] = useState<number | null>(null)
 
   const registerCaughtGif = useUnlockedGifsStore((state) => state.registerCaughtGif)
   const unlockedByNumber = useUnlockedGifsStore((state) => state.unlockedByNumber)
@@ -183,6 +184,21 @@ export function InfiniteScrollStage() {
     [registerCaughtGif],
   )
 
+  const handleCopyShareLink = useCallback(async (entry: ManifestEntry) => {
+    const sharePath = toBaseAssetPath(`/share/${entry.number}`)
+    const shareUrl = new URL(sharePath, window.location.origin).toString()
+
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopiedShareFor(entry.number)
+      window.setTimeout(() => {
+        setCopiedShareFor((current) => (current === entry.number ? null : current))
+      }, 1200)
+    } catch {
+      // If clipboard fails, keep the UI stable without throwing.
+    }
+  }, [])
+
   const revealCurrentEntry = useCallback(() => {
     const entry = getEntryByNumber(indexRef.current)
     if (!entry) {
@@ -211,6 +227,7 @@ export function InfiniteScrollStage() {
     setIsScrolling(false)
     setShowRewardPopup(false)
     setRewardResult(null)
+    setCopiedShareFor(null)
   }, [setAttemptValue, setCandidateValue])
 
   useEffect(() => {
@@ -536,6 +553,13 @@ export function InfiniteScrollStage() {
               </figcaption>
             </figure>
             <div className="scroll-stage__popup-actions">
+              <button
+                type="button"
+                className="scroll-stage__popup-btn"
+                onClick={() => void handleCopyShareLink(rewardResult.entry)}
+              >
+                {copiedShareFor === rewardResult.entry.number ? 'Copied!' : 'Share'}
+              </button>
               <button
                 type="button"
                 className="scroll-stage__popup-btn"
