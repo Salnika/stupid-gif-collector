@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "generate:collections-index": "node scripts/generate-collections-index.mjs",
-    "build": "yarn generate:collections-index && tsc -b && vite build",
+    "generate:share-pages": "node scripts/generate-share-pages.mjs",
+    "build": "yarn generate:collections-index && tsc -b && vite build && yarn generate:share-pages",
     "lint": "eslint .",
     "preview": "vite preview"
   },
