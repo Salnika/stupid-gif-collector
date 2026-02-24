@@ -185,7 +185,7 @@ export function InfiniteScrollStage() {
   )
 
   const handleCopyShareLink = useCallback(async (entry: ManifestEntry) => {
-    const sharePath = toBaseAssetPath(`/share/${entry.number}/`)
+    const sharePath = encodeAssetPath(entry.path)
     const shareUrl = new URL(sharePath, window.location.origin).toString()
 
     try {

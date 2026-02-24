@@ -112,7 +112,7 @@ export function MyCollectionPage() {
   }
 
   const handleCopyShareLink = async (gif: UnlockedGif) => {
-    const sharePath = toBaseAssetPath(`/share/${gif.number}/`)
+    const sharePath = encodeAssetPath(gif.path)
     const shareUrl = new URL(sharePath, window.location.origin).toString()
 
     try {
