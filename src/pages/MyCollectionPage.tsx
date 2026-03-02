@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent 
 import { encodeAssetPath, toBaseAssetPath } from '../lib/gifMeta'
 import {
   DEFAULT_GIF_RARITY,
+  GIF_RARITIES,
   isGifRarity,
   toGifRarityLabel,
   type GifRarity,
@@ -10,19 +11,63 @@ import { useUnlockedGifsStore, type UnlockedGif } from '../store/unlockedGifsSto
 
 const TOTAL_GIFS = 27901
 
+const hasSameItems = <T,>(left: T[], right: T[]): boolean =>
+  left.length === right.length && left.every((value, index) => value === right[index])
+
 const getDownloadFileName = (gif: UnlockedGif): string =>
   `${gif.number}-${gif.name.replace(/\s+/g, '-').toLowerCase()}.gif`
 
 export function MyCollectionPage() {
   const unlockedByNumber = useUnlockedGifsStore((state) => state.unlockedByNumber)
+  const favoriteByNumber = useUnlockedGifsStore((state) => state.favoriteByNumber)
+  const toggleFavorite = useUnlockedGifsStore((state) => state.toggleFavorite)
   const [copiedEmbedFor, setCopiedEmbedFor] = useState<number | null>(null)
   const [copiedShareFor, setCopiedShareFor] = useState<number | null>(null)
   const [selectedGif, setSelectedGif] = useState<UnlockedGif | null>(null)
   const [rarityByNumber, setRarityByNumber] = useState<Record<number, GifRarity>>({})
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+  const [collectionFilters, setCollectionFilters] = useState<string[]>([])
+  const [rarityFilters, setRarityFilters] = useState<GifRarity[]>([])
 
   const sortedUnlockedGifs = useMemo(
-    () => Object.values(unlockedByNumber).sort((a, b) => a.number - b.number),
-    [unlockedByNumber],
+    () =>
+      Object.values(unlockedByNumber)
+        .map((gif) => ({
+          ...gif,
+          rarity: rarityByNumber[gif.number] ?? gif.rarity ?? DEFAULT_GIF_RARITY,
+        }))
+        .sort((a, b) => a.number - b.number),
+    [rarityByNumber, unlockedByNumber],
+  )
+
+  const availableCollections = useMemo(() => {
+    const uniqueCollections = new Set(sortedUnlockedGifs.map((gif) => gif.collection))
+    return Array.from(uniqueCollections).sort((a, b) => a.localeCompare(b))
+  }, [sortedUnlockedGifs])
+
+  const availableRarities = useMemo(
+    () => GIF_RARITIES.filter((rarity) => sortedUnlockedGifs.some((gif) => gif.rarity === rarity)),
+    [sortedUnlockedGifs],
+  )
+
+  const filteredUnlockedGifs = useMemo(
+    () =>
+      sortedUnlockedGifs.filter((gif) => {
+        if (showFavoritesOnly && !favoriteByNumber[gif.number]) {
+          return false
+        }
+
+        if (collectionFilters.length > 0 && !collectionFilters.includes(gif.collection)) {
+          return false
+        }
+
+        if (rarityFilters.length > 0 && !rarityFilters.includes(gif.rarity)) {
+          return false
+        }
+
+        return true
+      }),
+    [collectionFilters, favoriteByNumber, rarityFilters, showFavoritesOnly, sortedUnlockedGifs],
   )
 
   const unlockedCount = sortedUnlockedGifs.length
@@ -30,6 +75,42 @@ export function MyCollectionPage() {
   const selectedGifRarity = selectedGif
     ? rarityByNumber[selectedGif.number] ?? selectedGif.rarity ?? DEFAULT_GIF_RARITY
     : DEFAULT_GIF_RARITY
+  const collectionDropdownValue = useMemo(() => {
+    if (collectionFilters.length === 0) {
+      return 'All'
+    }
+
+    if (collectionFilters.length === 1) {
+      return collectionFilters[0]
+    }
+
+    return `${collectionFilters.length} selected`
+  }, [collectionFilters])
+  const rarityDropdownValue = useMemo(() => {
+    if (rarityFilters.length === 0) {
+      return 'All'
+    }
+
+    if (rarityFilters.length === 1) {
+      return toGifRarityLabel(rarityFilters[0])
+    }
+
+    return `${rarityFilters.length} selected`
+  }, [rarityFilters])
+
+  useEffect(() => {
+    setCollectionFilters((current) => {
+      const next = current.filter((value) => availableCollections.includes(value))
+      return hasSameItems(current, next) ? current : next
+    })
+  }, [availableCollections])
+
+  useEffect(() => {
+    setRarityFilters((current) => {
+      const next = current.filter((value) => availableRarities.includes(value))
+      return hasSameItems(current, next) ? current : next
+    })
+  }, [availableRarities])
 
   useEffect(() => {
     let cancelled = false
@@ -137,6 +218,20 @@ export function MyCollectionPage() {
     }
   }
 
+  const toggleCollectionFilter = (collection: string) => {
+    setCollectionFilters((current) =>
+      current.includes(collection)
+        ? current.filter((item) => item !== collection)
+        : [...current, collection],
+    )
+  }
+
+  const toggleRarityFilter = (rarity: GifRarity) => {
+    setRarityFilters((current) =>
+      current.includes(rarity) ? current.filter((item) => item !== rarity) : [...current, rarity],
+    )
+  }
+
   return (
     <main className="app app--collection">
       <section className="my-collection">
@@ -145,14 +240,84 @@ export function MyCollectionPage() {
           <p>{unlockedSummary}</p>
         </header>
 
+        {sortedUnlockedGifs.length > 0 ? (
+          <section className="my-collection__filters" aria-label="Collection filters">
+            <label className="my-collection__filter-toggle">
+              <input
+                type="checkbox"
+                checked={showFavoritesOnly}
+                onChange={(event) => setShowFavoritesOnly(event.target.checked)}
+              />
+              <span>Favorites</span>
+            </label>
+
+            <label className="my-collection__filter-field">
+              <span>Collection</span>
+              <details className="my-collection__multiselect">
+                <summary className="my-collection__multiselect-trigger">{collectionDropdownValue}</summary>
+                <div className="my-collection__multiselect-menu">
+                  <button
+                    type="button"
+                    className="my-collection__multiselect-clear"
+                    disabled={collectionFilters.length === 0}
+                    onClick={() => setCollectionFilters([])}
+                  >
+                    All
+                  </button>
+                  {availableCollections.map((collection) => (
+                    <label key={collection} className="my-collection__multiselect-option">
+                      <input
+                        type="checkbox"
+                        checked={collectionFilters.includes(collection)}
+                        onChange={() => toggleCollectionFilter(collection)}
+                      />
+                      <span>{collection}</span>
+                    </label>
+                  ))}
+                </div>
+              </details>
+            </label>
+
+            <label className="my-collection__filter-field">
+              <span>Rarity</span>
+              <details className="my-collection__multiselect">
+                <summary className="my-collection__multiselect-trigger">{rarityDropdownValue}</summary>
+                <div className="my-collection__multiselect-menu">
+                  <button
+                    type="button"
+                    className="my-collection__multiselect-clear"
+                    disabled={rarityFilters.length === 0}
+                    onClick={() => setRarityFilters([])}
+                  >
+                    All
+                  </button>
+                  {availableRarities.map((rarity) => (
+                    <label key={rarity} className="my-collection__multiselect-option">
+                      <input
+                        type="checkbox"
+                        checked={rarityFilters.includes(rarity)}
+                        onChange={() => toggleRarityFilter(rarity)}
+                      />
+                      <span>{toGifRarityLabel(rarity)}</span>
+                    </label>
+                  ))}
+                </div>
+              </details>
+            </label>
+          </section>
+        ) : null}
+
         {sortedUnlockedGifs.length === 0 ? (
           <p className="my-collection__empty">
             No unlocked GIFs yet. Scroll on the Home page to add some.
           </p>
+        ) : filteredUnlockedGifs.length === 0 ? (
+          <p className="my-collection__empty">No GIF matches the selected filters.</p>
         ) : (
           <div className="my-collection__grid">
-            {sortedUnlockedGifs.map((gif) => {
-              const rarity = rarityByNumber[gif.number] ?? gif.rarity ?? DEFAULT_GIF_RARITY
+            {filteredUnlockedGifs.map((gif) => {
+              const isFavorite = Boolean(favoriteByNumber[gif.number])
+              const rarity = gif.rarity
 
               return (
                 <article
@@ -164,6 +329,25 @@ export function MyCollectionPage() {
                   onClick={() => setSelectedGif(gif)}
                   onKeyDown={(event) => handleCardKeyDown(event, gif)}
                 >
+                  <button
+                    type="button"
+                    className={`my-collection__favorite-btn${
+                      isFavorite ? ' my-collection__favorite-btn--active' : ''
+                    }`}
+                    aria-label={
+                      isFavorite
+                        ? `Remove GIF #${gif.number} from favorites`
+                        : `Add GIF #${gif.number} to favorites`
+                    }
+                    aria-pressed={isFavorite}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      toggleFavorite(gif.number)
+                    }}
+                  >
+                    {isFavorite ? '★' : '☆'}
+                  </button>
+
                   {gif.count >= 2 ? (
                     <span className="my-collection__count-badge">x{gif.count}</span>
                   ) : null}

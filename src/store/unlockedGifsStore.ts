@@ -31,13 +31,16 @@ export type RegisterCaughtGifResult = {
 
 type UnlockedGifsState = {
   unlockedByNumber: Record<number, UnlockedGif>
+  favoriteByNumber: Record<number, true>
   registerCaughtGif: (gif: RegisterCaughtGifInput) => RegisterCaughtGifResult
+  toggleFavorite: (gifNumber: number) => void
 }
 
 export const useUnlockedGifsStore = create<UnlockedGifsState>()(
   persist(
     (set) => ({
       unlockedByNumber: {},
+      favoriteByNumber: {},
       registerCaughtGif: (gif) => {
         let result: RegisterCaughtGifResult | null = null
 
@@ -84,17 +87,36 @@ export const useUnlockedGifsStore = create<UnlockedGifsState>()(
           }
         )
       },
+      toggleFavorite: (gifNumber) => {
+        if (!Number.isInteger(gifNumber) || gifNumber < 1) {
+          return
+        }
+
+        set((state) => {
+          const nextFavorites = { ...state.favoriteByNumber }
+
+          if (nextFavorites[gifNumber]) {
+            delete nextFavorites[gifNumber]
+          } else {
+            nextFavorites[gifNumber] = true
+          }
+
+          return { favoriteByNumber: nextFavorites }
+        })
+      },
     }),
     {
       name: 'stupid-vite-collect-unlocked-gifs',
       storage: createJSONStorage(() => localStorage),
-      version: 3,
+      version: 4,
       migrate: (persistedState) => {
         const state = persistedState as {
           unlockedByNumber?: Record<string, Partial<UnlockedGif>>
+          favoriteByNumber?: unknown
         }
 
         const unlockedByNumber: Record<number, UnlockedGif> = {}
+        const favoriteByNumber: Record<number, true> = {}
         const source = state.unlockedByNumber ?? {}
 
         for (const [key, value] of Object.entries(source)) {
@@ -119,7 +141,25 @@ export const useUnlockedGifsStore = create<UnlockedGifsState>()(
           }
         }
 
-        return { unlockedByNumber }
+        const rawFavorites = state.favoriteByNumber
+        if (rawFavorites && typeof rawFavorites === 'object' && !Array.isArray(rawFavorites)) {
+          for (const [key, value] of Object.entries(rawFavorites)) {
+            const numberFromKey = Number.parseInt(key, 10)
+            if (!Number.isFinite(numberFromKey) || numberFromKey < 1 || !value) {
+              continue
+            }
+            favoriteByNumber[numberFromKey] = true
+          }
+        } else if (Array.isArray(rawFavorites)) {
+          for (const value of rawFavorites) {
+            if (typeof value !== 'number' || !Number.isFinite(value) || value < 1) {
+              continue
+            }
+            favoriteByNumber[value] = true
+          }
+        }
+
+        return { unlockedByNumber, favoriteByNumber }
       },
     },
   ),
