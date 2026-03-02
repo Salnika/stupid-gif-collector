@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { vanillaExtractPlugin } from '@vanilla-extract/vite-plugin'
 
 const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1]
 const pagesBase =
@@ -9,6 +10,7 @@ const pagesBase =
 export default defineConfig({
   base: pagesBase,
   plugins: [
+    vanillaExtractPlugin(),
     react({
       babel: {
         plugins: [['babel-plugin-react-compiler']],
