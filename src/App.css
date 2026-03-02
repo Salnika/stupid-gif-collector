@@ -104,6 +104,56 @@
   font-size: 0.9rem;
 }
 
+.my-collection__transfer {
+  margin-top: 0.72rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.48rem;
+}
+
+.my-collection__transfer-btn {
+  min-height: 2rem;
+  padding: 0 0.72rem;
+  border-radius: 0.46rem;
+  border: 1px solid rgba(226, 232, 240, 0.32);
+  background: rgba(13, 28, 20, 0.9);
+  color: rgba(236, 253, 245, 0.98);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.my-collection__transfer-btn--secondary {
+  background: rgba(18, 28, 43, 0.9);
+}
+
+.my-collection__transfer-btn:hover {
+  border-color: rgba(167, 243, 208, 0.75);
+}
+
+.my-collection__transfer-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.my-collection__transfer-status {
+  margin: 0.55rem 0 0;
+  font-size: 0.8rem;
+}
+
+.my-collection__transfer-status--info {
+  color: rgba(203, 213, 225, 0.92);
+}
+
+.my-collection__transfer-status--success {
+  color: rgba(134, 239, 172, 0.95);
+}
+
+.my-collection__transfer-status--error {
+  color: rgba(252, 165, 165, 0.96);
+}
+
 .my-collection__filters {
   margin-top: 0.85rem;
   padding: 0.62rem;
@@ -1177,6 +1227,19 @@
 }
 
 @media (max-width: 640px) {
+  .my-collection__filters {
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .my-collection__filter-toggle {
+    min-height: 1.9rem;
+  }
+
+  .my-collection__filter-field {
+    flex: 1 1 100%;
+  }
+
   .portal-loader {
     --loader-size: min(50vw, 13rem);
   }

@@ -1,5 +1,18 @@
-import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
+import {
+  createCollectionBackup,
+  parseCollectionBackup,
+  serializeCollectionBackup,
+} from '../lib/collectionBackup'
 import { encodeAssetPath, toBaseAssetPath } from '../lib/gifMeta'
+import { extractPayloadFromJpeg, hidePayloadInJpeg } from '../lib/jpgStego'
 import {
   DEFAULT_GIF_RARITY,
   GIF_RARITIES,
@@ -17,12 +30,31 @@ const hasSameItems = <T,>(left: T[], right: T[]): boolean =>
 const getDownloadFileName = (gif: UnlockedGif): string =>
   `${gif.number}-${gif.name.replace(/\s+/g, '-').toLowerCase()}.gif`
 
+type TransferStatus = {
+  tone: 'info' | 'success' | 'error'
+  message: string
+}
+
+const toErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message
+  }
+
+  return fallback
+}
+
 export function MyCollectionPage() {
   const unlockedByNumber = useUnlockedGifsStore((state) => state.unlockedByNumber)
   const favoriteByNumber = useUnlockedGifsStore((state) => state.favoriteByNumber)
   const toggleFavorite = useUnlockedGifsStore((state) => state.toggleFavorite)
+  const replaceCollectionFromImport = useUnlockedGifsStore(
+    (state) => state.replaceCollectionFromImport,
+  )
+  const importInputRef = useRef<HTMLInputElement | null>(null)
   const [copiedEmbedFor, setCopiedEmbedFor] = useState<number | null>(null)
   const [copiedShareFor, setCopiedShareFor] = useState<number | null>(null)
+  const [isTransferPending, setIsTransferPending] = useState(false)
+  const [transferStatus, setTransferStatus] = useState<TransferStatus | null>(null)
   const [selectedGif, setSelectedGif] = useState<UnlockedGif | null>(null)
   const [rarityByNumber, setRarityByNumber] = useState<Record<number, GifRarity>>({})
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
@@ -207,6 +239,117 @@ export function MyCollectionPage() {
     }
   }
 
+  const handleExportStegoJpg = async () => {
+    if (sortedUnlockedGifs.length === 0) {
+      setTransferStatus({
+        tone: 'error',
+        message: 'Nothing to export yet. Unlock at least one GIF first.',
+      })
+      return
+    }
+
+    setIsTransferPending(true)
+    setTransferStatus({
+      tone: 'info',
+      message: 'Preparing JPG backup...',
+    })
+
+    try {
+      const backup = createCollectionBackup({
+        unlockedByNumber,
+        favoriteByNumber,
+      })
+      const serializedBackup = serializeCollectionBackup(backup)
+      const payloadBytes = new TextEncoder().encode(serializedBackup)
+
+      const coverResponse = await fetch(toBaseAssetPath('/background.jpg'), {
+        cache: 'no-store',
+      })
+
+      if (!coverResponse.ok) {
+        throw new Error('Unable to load the JPG cover image.')
+      }
+
+      const coverJpegBytes = new Uint8Array(await coverResponse.arrayBuffer())
+      const stegoJpegBytes = hidePayloadInJpeg(coverJpegBytes, payloadBytes)
+      const stegoBuffer = new ArrayBuffer(stegoJpegBytes.byteLength)
+      new Uint8Array(stegoBuffer).set(stegoJpegBytes)
+      const backupBlob = new Blob([stegoBuffer], { type: 'image/jpeg' })
+      const exportDate = new Date(backup.exportedAt).toISOString().slice(0, 10)
+      const fileName = `stupid-vite-collect-backup-${exportDate}.jpg`
+      const objectUrl = URL.createObjectURL(backupBlob)
+      const downloadLink = document.createElement('a')
+      downloadLink.href = objectUrl
+      downloadLink.download = fileName
+      document.body.append(downloadLink)
+      downloadLink.click()
+      downloadLink.remove()
+      URL.revokeObjectURL(objectUrl)
+
+      setTransferStatus({
+        tone: 'success',
+        message: `Exported ${backup.entries.length} GIFs into ${fileName}.`,
+      })
+    } catch (error) {
+      setTransferStatus({
+        tone: 'error',
+        message: toErrorMessage(error, 'Export failed.'),
+      })
+    } finally {
+      setIsTransferPending(false)
+    }
+  }
+
+  const handleImportStegoJpg = async (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0] ?? null
+    event.target.value = ''
+
+    if (!selectedFile) {
+      return
+    }
+
+    setIsTransferPending(true)
+    setTransferStatus({
+      tone: 'info',
+      message: `Reading ${selectedFile.name}...`,
+    })
+
+    try {
+      const stegoJpegBytes = new Uint8Array(await selectedFile.arrayBuffer())
+      const payloadBytes = extractPayloadFromJpeg(stegoJpegBytes)
+      const serializedBackup = new TextDecoder().decode(payloadBytes)
+      const backup = parseCollectionBackup(serializedBackup)
+      const shouldImport = window.confirm(
+        `Import ${backup.entries.length} GIFs from "${selectedFile.name}"? This will replace your current local collection.`,
+      )
+
+      if (!shouldImport) {
+        setTransferStatus({
+          tone: 'info',
+          message: 'Import cancelled.',
+        })
+        return
+      }
+
+      const result = replaceCollectionFromImport(backup.entries)
+      setSelectedGif(null)
+      setShowFavoritesOnly(false)
+      setCollectionFilters([])
+      setRarityFilters([])
+      setTransferStatus({
+        tone: 'success',
+        message: `Import complete: ${result.imported} GIFs restored.`,
+      })
+    } catch (error) {
+      setTransferStatus({
+        tone: 'error',
+        message: toErrorMessage(error, 'Import failed.'),
+      })
+    } finally {
+      setIsTransferPending(false)
+    }
+  }
+
   const handleCardKeyDown = (event: ReactKeyboardEvent<HTMLElement>, gif: UnlockedGif) => {
     if (event.target !== event.currentTarget) {
       return
@@ -238,6 +381,38 @@ export function MyCollectionPage() {
         <header className="my-collection__header">
           <h1>My collection</h1>
           <p>{unlockedSummary}</p>
+          <div className="my-collection__transfer">
+            <button
+              type="button"
+              className="my-collection__transfer-btn"
+              disabled={isTransferPending || sortedUnlockedGifs.length === 0}
+              onClick={() => void handleExportStegoJpg()}
+            >
+              Export .jpg
+            </button>
+            <button
+              type="button"
+              className="my-collection__transfer-btn my-collection__transfer-btn--secondary"
+              disabled={isTransferPending}
+              onClick={() => importInputRef.current?.click()}
+            >
+              Import .jpg
+            </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".jpg,.jpeg,image/jpeg"
+              onChange={(event) => void handleImportStegoJpg(event)}
+              hidden
+            />
+          </div>
+          {transferStatus ? (
+            <p
+              className={`my-collection__transfer-status my-collection__transfer-status--${transferStatus.tone}`}
+            >
+              {transferStatus.message}
+            </p>
+          ) : null}
         </header>
 
         {sortedUnlockedGifs.length > 0 ? (

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { DEFAULT_GIF_RARITY, isGifRarity, type GifRarity } from '../lib/rarity'
+import type { CollectionBackupEntry } from '../lib/collectionBackup'
 
 const normalizeGifPath = (value: string): string =>
   value.replace(/\/%23(\d+-)/gi, '/$1').replace(/\/#(\d+-)/g, '/$1')
@@ -34,6 +35,7 @@ type UnlockedGifsState = {
   favoriteByNumber: Record<number, true>
   registerCaughtGif: (gif: RegisterCaughtGifInput) => RegisterCaughtGifResult
   toggleFavorite: (gifNumber: number) => void
+  replaceCollectionFromImport: (entries: CollectionBackupEntry[]) => { imported: number }
 }
 
 export const useUnlockedGifsStore = create<UnlockedGifsState>()(
@@ -103,6 +105,61 @@ export const useUnlockedGifsStore = create<UnlockedGifsState>()(
 
           return { favoriteByNumber: nextFavorites }
         })
+      },
+      replaceCollectionFromImport: (entries) => {
+        let imported = 0
+        const importedAt = Date.now()
+
+        set(() => {
+          const nextUnlockedByNumber: Record<number, UnlockedGif> = {}
+          const nextFavoriteByNumber: Record<number, true> = {}
+
+          for (const entry of entries) {
+            if (!entry || typeof entry !== 'object') {
+              continue
+            }
+
+            const number = Number.isFinite(entry.number) ? Math.floor(entry.number) : NaN
+            if (!Number.isFinite(number) || number < 1) {
+              continue
+            }
+
+            const count =
+              Number.isFinite(entry.count) && entry.count > 0 ? Math.floor(entry.count) : 1
+            const unlockedAt =
+              Number.isFinite(entry.unlockedAt) && entry.unlockedAt > 0
+                ? Math.floor(entry.unlockedAt)
+                : importedAt
+
+            nextUnlockedByNumber[number] = {
+              number,
+              name: typeof entry.name === 'string' && entry.name.trim().length > 0
+                ? entry.name.trim()
+                : `GIF ${number}`,
+              collection:
+                typeof entry.collection === 'string' && entry.collection.trim().length > 0
+                  ? entry.collection.trim()
+                  : 'unknown',
+              rarity: isGifRarity(entry.rarity) ? entry.rarity : DEFAULT_GIF_RARITY,
+              path: typeof entry.path === 'string' ? normalizeGifPath(entry.path) : '',
+              unlockedAt,
+              count,
+            }
+
+            if (entry.favorite) {
+              nextFavoriteByNumber[number] = true
+            }
+          }
+
+          imported = Object.keys(nextUnlockedByNumber).length
+
+          return {
+            unlockedByNumber: nextUnlockedByNumber,
+            favoriteByNumber: nextFavoriteByNumber,
+          }
+        })
+
+        return { imported }
       },
     }),
     {
