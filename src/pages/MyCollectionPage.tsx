@@ -11,8 +11,8 @@ import {
   parseCollectionBackup,
   serializeCollectionBackup,
 } from '../lib/collectionBackup'
+import { extractPayloadFromGif, hidePayloadInGif } from '../lib/gifStego'
 import { encodeAssetPath, toBaseAssetPath } from '../lib/gifMeta'
-import { extractPayloadFromJpeg, hidePayloadInJpeg } from '../lib/jpgStego'
 import {
   DEFAULT_GIF_RARITY,
   GIF_RARITIES,
@@ -29,6 +29,19 @@ const hasSameItems = <T,>(left: T[], right: T[]): boolean =>
 
 const getDownloadFileName = (gif: UnlockedGif): string =>
   `${gif.number}-${gif.name.replace(/\s+/g, '-').toLowerCase()}.gif`
+
+const getShuffledIndexes = (length: number): number[] => {
+  const indexes = Array.from({ length }, (_, index) => index)
+
+  for (let index = indexes.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1))
+    const current = indexes[index]
+    indexes[index] = indexes[swapIndex]
+    indexes[swapIndex] = current
+  }
+
+  return indexes
+}
 
 type TransferStatus = {
   tone: 'info' | 'success' | 'error'
@@ -239,7 +252,7 @@ export function MyCollectionPage() {
     }
   }
 
-  const handleExportStegoJpg = async () => {
+  const handleExportStegoGif = async () => {
     if (sortedUnlockedGifs.length === 0) {
       setTransferStatus({
         tone: 'error',
@@ -251,7 +264,7 @@ export function MyCollectionPage() {
     setIsTransferPending(true)
     setTransferStatus({
       tone: 'info',
-      message: 'Preparing JPG backup...',
+      message: 'Preparing GIF backup...',
     })
 
     try {
@@ -261,22 +274,38 @@ export function MyCollectionPage() {
       })
       const serializedBackup = serializeCollectionBackup(backup)
       const payloadBytes = new TextEncoder().encode(serializedBackup)
+      const shuffledIndexes = getShuffledIndexes(sortedUnlockedGifs.length)
+      let selectedCoverGif: UnlockedGif | null = null
+      let stegoGifBytes: Uint8Array | null = null
 
-      const coverResponse = await fetch(toBaseAssetPath('/background.jpg'), {
-        cache: 'no-store',
-      })
+      for (const index of shuffledIndexes) {
+        const candidate = sortedUnlockedGifs[index]
+        try {
+          const coverResponse = await fetch(encodeAssetPath(candidate.path), {
+            cache: 'no-store',
+          })
+          if (!coverResponse.ok) {
+            continue
+          }
 
-      if (!coverResponse.ok) {
-        throw new Error('Unable to load the JPG cover image.')
+          const coverGifBytes = new Uint8Array(await coverResponse.arrayBuffer())
+          stegoGifBytes = hidePayloadInGif(coverGifBytes, payloadBytes)
+          selectedCoverGif = candidate
+          break
+        } catch {
+          // Try next candidate.
+        }
       }
 
-      const coverJpegBytes = new Uint8Array(await coverResponse.arrayBuffer())
-      const stegoJpegBytes = hidePayloadInJpeg(coverJpegBytes, payloadBytes)
-      const stegoBuffer = new ArrayBuffer(stegoJpegBytes.byteLength)
-      new Uint8Array(stegoBuffer).set(stegoJpegBytes)
-      const backupBlob = new Blob([stegoBuffer], { type: 'image/jpeg' })
+      if (!selectedCoverGif || !stegoGifBytes) {
+        throw new Error('Unable to load a GIF cover from your collection.')
+      }
+
+      const stegoBuffer = new ArrayBuffer(stegoGifBytes.byteLength)
+      new Uint8Array(stegoBuffer).set(stegoGifBytes)
+      const backupBlob = new Blob([stegoBuffer], { type: 'image/gif' })
       const exportDate = new Date(backup.exportedAt).toISOString().slice(0, 10)
-      const fileName = `stupid-vite-collect-backup-${exportDate}.jpg`
+      const fileName = `stupid-vite-collect-backup-${exportDate}-${selectedCoverGif.number}.gif`
       const objectUrl = URL.createObjectURL(backupBlob)
       const downloadLink = document.createElement('a')
       downloadLink.href = objectUrl
@@ -288,7 +317,7 @@ export function MyCollectionPage() {
 
       setTransferStatus({
         tone: 'success',
-        message: `Exported ${backup.entries.length} GIFs into ${fileName}.`,
+        message: `Exported ${backup.entries.length} GIFs into ${fileName} (cover #${selectedCoverGif.number}).`,
       })
     } catch (error) {
       setTransferStatus({
@@ -300,7 +329,7 @@ export function MyCollectionPage() {
     }
   }
 
-  const handleImportStegoJpg = async (event: ChangeEvent<HTMLInputElement>) => {
+  const handleImportStegoGif = async (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] ?? null
     event.target.value = ''
 
@@ -315,8 +344,8 @@ export function MyCollectionPage() {
     })
 
     try {
-      const stegoJpegBytes = new Uint8Array(await selectedFile.arrayBuffer())
-      const payloadBytes = extractPayloadFromJpeg(stegoJpegBytes)
+      const stegoGifBytes = new Uint8Array(await selectedFile.arrayBuffer())
+      const payloadBytes = extractPayloadFromGif(stegoGifBytes)
       const serializedBackup = new TextDecoder().decode(payloadBytes)
       const backup = parseCollectionBackup(serializedBackup)
       const shouldImport = window.confirm(
@@ -386,9 +415,9 @@ export function MyCollectionPage() {
               type="button"
               className="my-collection__transfer-btn"
               disabled={isTransferPending || sortedUnlockedGifs.length === 0}
-              onClick={() => void handleExportStegoJpg()}
+              onClick={() => void handleExportStegoGif()}
             >
-              Export .jpg
+              Export .gif
             </button>
             <button
               type="button"
@@ -396,13 +425,13 @@ export function MyCollectionPage() {
               disabled={isTransferPending}
               onClick={() => importInputRef.current?.click()}
             >
-              Import .jpg
+              Import .gif
             </button>
             <input
               ref={importInputRef}
               type="file"
-              accept=".jpg,.jpeg,image/jpeg"
-              onChange={(event) => void handleImportStegoJpg(event)}
+              accept=".gif,image/gif"
+              onChange={(event) => void handleImportStegoGif(event)}
               hidden
             />
           </div>

@@ -1,5 +1,5 @@
-const STEGO_START_MARKER = new TextEncoder().encode('SVC-JPG-STEGO-V1-START')
-const STEGO_END_MARKER = new TextEncoder().encode('SVC-JPG-STEGO-V1-END')
+const STEGO_START_MARKER = new TextEncoder().encode('SVC-GIF-STEGO-V1-START')
+const STEGO_END_MARKER = new TextEncoder().encode('SVC-GIF-STEGO-V1-END')
 
 const METADATA_SIZE_BYTES = 8
 
@@ -28,8 +28,14 @@ const readUint32 = (source: Uint8Array, offset: number): number =>
     source[offset + 3]) >>>
   0
 
-const isLikelyJpeg = (bytes: Uint8Array): boolean =>
-  bytes.length >= 4 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
+const isLikelyGif = (bytes: Uint8Array): boolean =>
+  bytes.length >= 6 &&
+  bytes[0] === 0x47 &&
+  bytes[1] === 0x49 &&
+  bytes[2] === 0x46 &&
+  bytes[3] === 0x38 &&
+  (bytes[4] === 0x37 || bytes[4] === 0x39) &&
+  bytes[5] === 0x61
 
 const endsWithSequence = (source: Uint8Array, suffix: Uint8Array): boolean => {
   if (source.length < suffix.length) {
@@ -65,9 +71,9 @@ const lastIndexOfSequence = (source: Uint8Array, target: Uint8Array, fromIndex: 
   return -1
 }
 
-export const hidePayloadInJpeg = (coverJpegBytes: Uint8Array, payload: Uint8Array): Uint8Array => {
-  if (!isLikelyJpeg(coverJpegBytes)) {
-    throw new Error('Cover file must be a JPEG image.')
+export const hidePayloadInGif = (coverGifBytes: Uint8Array, payload: Uint8Array): Uint8Array => {
+  if (!isLikelyGif(coverGifBytes)) {
+    throw new Error('Cover file must be a GIF image.')
   }
 
   if (payload.length === 0) {
@@ -79,12 +85,12 @@ export const hidePayloadInJpeg = (coverJpegBytes: Uint8Array, payload: Uint8Arra
   writeUint32(metadata, 4, fnv1a32(payload))
 
   const output = new Uint8Array(
-    coverJpegBytes.length + STEGO_START_MARKER.length + metadata.length + payload.length + STEGO_END_MARKER.length,
+    coverGifBytes.length + STEGO_START_MARKER.length + metadata.length + payload.length + STEGO_END_MARKER.length,
   )
 
   let cursor = 0
-  output.set(coverJpegBytes, cursor)
-  cursor += coverJpegBytes.length
+  output.set(coverGifBytes, cursor)
+  cursor += coverGifBytes.length
 
   output.set(STEGO_START_MARKER, cursor)
   cursor += STEGO_START_MARKER.length
@@ -100,26 +106,26 @@ export const hidePayloadInJpeg = (coverJpegBytes: Uint8Array, payload: Uint8Arra
   return output
 }
 
-export const extractPayloadFromJpeg = (stegoJpegBytes: Uint8Array): Uint8Array => {
-  if (!isLikelyJpeg(stegoJpegBytes)) {
-    throw new Error('Selected file is not a JPEG image.')
+export const extractPayloadFromGif = (stegoGifBytes: Uint8Array): Uint8Array => {
+  if (!isLikelyGif(stegoGifBytes)) {
+    throw new Error('Selected file is not a GIF image.')
   }
 
-  if (!endsWithSequence(stegoJpegBytes, STEGO_END_MARKER)) {
-    throw new Error('No hidden backup was found in this JPEG.')
+  if (!endsWithSequence(stegoGifBytes, STEGO_END_MARKER)) {
+    throw new Error('No hidden backup was found in this GIF.')
   }
 
-  const payloadSectionEnd = stegoJpegBytes.length - STEGO_END_MARKER.length
+  const payloadSectionEnd = stegoGifBytes.length - STEGO_END_MARKER.length
   const searchStart = payloadSectionEnd - (STEGO_START_MARKER.length + METADATA_SIZE_BYTES)
-  const startIndex = lastIndexOfSequence(stegoJpegBytes, STEGO_START_MARKER, searchStart)
+  const startIndex = lastIndexOfSequence(stegoGifBytes, STEGO_START_MARKER, searchStart)
 
   if (startIndex < 0) {
     throw new Error('Hidden backup metadata is missing.')
   }
 
   const metadataIndex = startIndex + STEGO_START_MARKER.length
-  const payloadLength = readUint32(stegoJpegBytes, metadataIndex)
-  const expectedHash = readUint32(stegoJpegBytes, metadataIndex + 4)
+  const payloadLength = readUint32(stegoGifBytes, metadataIndex)
+  const expectedHash = readUint32(stegoGifBytes, metadataIndex + 4)
   const payloadStart = metadataIndex + METADATA_SIZE_BYTES
   const payloadEnd = payloadStart + payloadLength
 
@@ -127,7 +133,7 @@ export const extractPayloadFromJpeg = (stegoJpegBytes: Uint8Array): Uint8Array =
     throw new Error('Hidden backup payload is corrupted.')
   }
 
-  const payload = stegoJpegBytes.slice(payloadStart, payloadEnd)
+  const payload = stegoGifBytes.slice(payloadStart, payloadEnd)
   const actualHash = fnv1a32(payload)
 
   if (actualHash !== expectedHash) {
