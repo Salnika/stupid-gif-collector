@@ -131,7 +131,12 @@
 .my-collection__filter-toggle input {
   width: 1rem;
   height: 1rem;
+  margin: 0;
   accent-color: #f6c56f;
+}
+
+.my-collection__filter-toggle span {
+  line-height: 1;
 }
 
 .my-collection__filter-field {
@@ -211,6 +216,26 @@
   width: 0.95rem;
   height: 0.95rem;
   accent-color: #5da8ff;
+}
+
+.my-collection__multiselect-option--rarity-common span {
+  color: var(--rarity-common);
+}
+
+.my-collection__multiselect-option--rarity-uncommon span {
+  color: var(--rarity-uncommon);
+}
+
+.my-collection__multiselect-option--rarity-rare span {
+  color: var(--rarity-rare);
+}
+
+.my-collection__multiselect-option--rarity-epic span {
+  color: var(--rarity-epic);
+}
+
+.my-collection__multiselect-option--rarity-legendary span {
+  color: var(--rarity-legendary);
 }
 
 .my-collection__multiselect-clear {

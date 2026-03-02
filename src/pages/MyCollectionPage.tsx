@@ -292,7 +292,10 @@ export function MyCollectionPage() {
                     All
                   </button>
                   {availableRarities.map((rarity) => (
-                    <label key={rarity} className="my-collection__multiselect-option">
+                    <label
+                      key={rarity}
+                      className={`my-collection__multiselect-option my-collection__multiselect-option--rarity-${rarity}`}
+                    >
                       <input
                         type="checkbox"
                         checked={rarityFilters.includes(rarity)}
