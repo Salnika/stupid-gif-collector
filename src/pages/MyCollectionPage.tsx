@@ -417,7 +417,7 @@ export function MyCollectionPage() {
               disabled={isTransferPending || sortedUnlockedGifs.length === 0}
               onClick={() => void handleExportStegoGif()}
             >
-              Export .gif
+              Export collection
             </button>
             <button
               type="button"
@@ -425,7 +425,7 @@ export function MyCollectionPage() {
               disabled={isTransferPending}
               onClick={() => importInputRef.current?.click()}
             >
-              Import .gif
+              Import collection
             </button>
             <input
               ref={importInputRef}
