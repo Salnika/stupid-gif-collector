@@ -1,5 +1,6 @@
-import { style } from '@vanilla-extract/css'
+import { globalStyle, style } from '@vanilla-extract/css'
 import { vars } from '../../../shared/styles/theme.css'
+import * as gifCardStyles from '../../../shared/ui/GifCard.css'
 
 export const page = style({
   width: '100%',
@@ -149,6 +150,14 @@ export const grid = style({
   display: 'grid',
   gap: '0.9rem',
   gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+})
+
+export const uniformGifCard = style({})
+
+globalStyle(`.${uniformGifCard} .${gifCardStyles.image}`, {
+  height: '220px',
+  minHeight: '220px',
+  maxHeight: '220px',
 })
 
 export const cardActions = style({

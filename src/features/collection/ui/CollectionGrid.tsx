@@ -35,6 +35,7 @@ export function CollectionGrid({
         <GifCard
           key={gif.number}
           entry={gif}
+          className={styles.uniformGifCard}
           count={gif.count}
           interactive
           isFavorite={gif.isFavorite}
