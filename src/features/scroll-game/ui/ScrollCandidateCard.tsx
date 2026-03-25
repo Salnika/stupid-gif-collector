@@ -1,17 +1,23 @@
-import { actionButton } from '../../../shared/styles/recipes.css'
-import { GifCard } from '../../../shared/ui'
-import type { GifCatalogEntry } from '../../catalog/domain'
-import * as styles from './scrollGame.css'
+import { actionButton } from "../../../shared/styles/recipes.css";
+import { GifCard } from "../../../shared/ui";
+import type { GifCatalogEntry } from "../../catalog/domain";
+import * as styles from "./scrollGame.css";
 
 type ScrollCandidateCardProps = {
-  entry: GifCatalogEntry
-  count: number
-  isNew: boolean
-  canKeep: boolean
-  onKeep: () => void
-}
+  entry: GifCatalogEntry;
+  count: number;
+  isNew: boolean;
+  canKeep: boolean;
+  onKeep: () => void;
+};
 
-export function ScrollCandidateCard({ entry, count, isNew, canKeep, onKeep }: ScrollCandidateCardProps) {
+export function ScrollCandidateCard({
+  entry,
+  count,
+  isNew,
+  canKeep,
+  onKeep,
+}: ScrollCandidateCardProps) {
   return (
     <>
       <div className={styles.selectedCard}>
@@ -21,16 +27,12 @@ export function ScrollCandidateCard({ entry, count, isNew, canKeep, onKeep }: Sc
 
       {canKeep ? (
         <div className={styles.candidateActions}>
-          <button
-            type="button"
-            className={actionButton({ tone: 'primary' })}
-            onClick={onKeep}
-          >
+          <button type="button" className={actionButton({ tone: "primary" })} onClick={onKeep}>
             Keep
           </button>
           <p className={styles.candidateHelp}>Scroll to keep searching</p>
         </div>
       ) : null}
     </>
-  )
+  );
 }

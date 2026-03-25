@@ -1,8 +1,8 @@
-import { NavLink } from 'react-router-dom'
-import * as styles from './AppNavigation.css'
+import { NavLink } from "react-router-dom";
+import * as styles from "./AppNavigation.css";
 
 const navClassName = ({ isActive }: { isActive: boolean }) =>
-  isActive ? `${styles.navButton} ${styles.navButtonActive}` : styles.navButton
+  isActive ? `${styles.navButton} ${styles.navButtonActive}` : styles.navButton;
 
 export function AppNavigation() {
   return (
@@ -31,5 +31,5 @@ export function AppNavigation() {
         </svg>
       </a>
     </>
-  )
+  );
 }

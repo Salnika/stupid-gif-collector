@@ -1,5 +1,5 @@
-import { AppNavigation } from './components/AppNavigation'
-import { AppRoutes } from './app/AppRoutes'
+import { AppNavigation } from "./components/AppNavigation";
+import { AppRoutes } from "./app/AppRoutes";
 
 function App() {
   return (
@@ -7,7 +7,7 @@ function App() {
       <AppNavigation />
       <AppRoutes />
     </>
-  )
+  );
 }
 
-export default App
+export default App;

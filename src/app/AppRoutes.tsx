@@ -1,7 +1,7 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
-import { HomePage } from '../pages/HomePage'
-import { MyCollectionPage } from '../pages/MyCollectionPage'
-import { SharedGifPage } from '../pages/SharedGifPage'
+import { Navigate, Route, Routes } from "react-router-dom";
+import { HomePage } from "../pages/HomePage";
+import { MyCollectionPage } from "../pages/MyCollectionPage";
+import { SharedGifPage } from "../pages/SharedGifPage";
 
 export function AppRoutes() {
   return (
@@ -12,5 +12,5 @@ export function AppRoutes() {
       <Route path="/share/:gifNumber" element={<SharedGifPage />} />
       <Route path="*" element={<HomePage />} />
     </Routes>
-  )
+  );
 }

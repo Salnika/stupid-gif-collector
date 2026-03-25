@@ -1,78 +1,84 @@
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent } from 'react'
-import { encodeAssetPath } from '../../../lib/gifMeta'
-import { clearBrowserTimeout } from '../../../shared/lib/browser'
-import { actionButton, rarityBorder } from '../../../shared/styles/recipes.css'
-import { RarityBadge } from '../../../shared/ui'
-import type { GifCatalogEntry } from '../../catalog/domain'
-import type { DailyPack } from '../domain'
-import * as styles from './dailyPacks.css'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
+import { encodeAssetPath } from "../../../lib/gifMeta";
+import { clearBrowserTimeout } from "../../../shared/lib/browser";
+import { actionButton, rarityBorder } from "../../../shared/styles/recipes.css";
+import { RarityBadge } from "../../../shared/ui";
+import type { GifCatalogEntry } from "../../catalog/domain";
+import { isGoldDailyPackId, type DailyPack } from "../domain";
+import * as styles from "./dailyPacks.css";
 
 type DailyPackOpeningDialogProps = {
-  dayLabel: string
-  pack: DailyPack
-  packArtwork: string
-  entriesByNumber: Record<number, GifCatalogEntry>
-  animateOnOpen: boolean
-  remainingPacks: number
-  onOpenPack: () => void
-  onClose: () => void
-  onGoToCollection: () => void
-}
+  dayLabel: string;
+  pack: DailyPack;
+  packArtwork: string;
+  entriesByNumber: Record<number, GifCatalogEntry>;
+  animateOnOpen: boolean;
+  remainingPacks: number;
+  onOpenPack: () => void;
+  onClose: () => void;
+  onGoToCollection: () => void;
+};
 
 type AnimatedCardStyle = CSSProperties & {
-  '--spread-x': string
-  '--spread-y': string
-  '--spread-rotate': string
-}
+  "--spread-x": string;
+  "--spread-y": string;
+  "--spread-rotate": string;
+};
 
 type PackMaskStyle = CSSProperties & {
-  '--pack-mask': string
-}
+  "--pack-mask": string;
+};
 
 const CARD_SPREADS: AnimatedCardStyle[] = [
   {
-    '--spread-x': 'clamp(-250px, -23vw, -122px)',
-    '--spread-y': '44px',
-    '--spread-rotate': '-16deg',
+    "--spread-x": "clamp(-250px, -23vw, -122px)",
+    "--spread-y": "44px",
+    "--spread-rotate": "-16deg",
   },
   {
-    '--spread-x': 'clamp(-126px, -11vw, -58px)',
-    '--spread-y': '16px',
-    '--spread-rotate': '-8deg',
+    "--spread-x": "clamp(-126px, -11vw, -58px)",
+    "--spread-y": "16px",
+    "--spread-rotate": "-8deg",
   },
   {
-    '--spread-x': '0px',
-    '--spread-y': '-8px',
-    '--spread-rotate': '0deg',
+    "--spread-x": "0px",
+    "--spread-y": "-8px",
+    "--spread-rotate": "0deg",
   },
   {
-    '--spread-x': 'clamp(126px, 11vw, 58px)',
-    '--spread-y': '16px',
-    '--spread-rotate': '8deg',
+    "--spread-x": "clamp(126px, 11vw, 58px)",
+    "--spread-y": "16px",
+    "--spread-rotate": "8deg",
   },
   {
-    '--spread-x': 'clamp(250px, 23vw, 122px)',
-    '--spread-y': '44px',
-    '--spread-rotate': '16deg',
+    "--spread-x": "clamp(250px, 23vw, 122px)",
+    "--spread-y": "44px",
+    "--spread-rotate": "16deg",
   },
-]
+];
 
-const REVEAL_DELAY_MS = 2750
+const REVEAL_DELAY_MS = 2750;
 
 const getPackMaskStyle = (artwork: string): PackMaskStyle => ({
-  '--pack-mask': `url("${artwork}")`,
-})
+  "--pack-mask": `url("${artwork}")`,
+});
 
 type PackRewardCardProps = {
-  entry: GifCatalogEntry
-  count: number
-  isNew: boolean
-}
+  entry: GifCatalogEntry;
+  count: number;
+  isNew: boolean;
+};
 
 type PackReward = {
-  entry: GifCatalogEntry
-  reveal: DailyPack['revealResults'][number]
-}
+  entry: GifCatalogEntry;
+  reveal: DailyPack["revealResults"][number];
+};
 
 function PackRewardCard({ entry, count, isNew }: PackRewardCardProps) {
   return (
@@ -95,7 +101,7 @@ function PackRewardCard({ entry, count, isNew }: PackRewardCardProps) {
         </div>
       </div>
     </>
-  )
+  );
 }
 
 function PackArtworkSurface({ artwork }: { artwork: string }) {
@@ -106,7 +112,7 @@ function PackArtworkSurface({ artwork }: { artwork: string }) {
       <div className={styles.dialogPackTextureHolo} aria-hidden="true" />
       <div className={styles.dialogPackTextureGloss} aria-hidden="true" />
     </>
-  )
+  );
 }
 
 export function DailyPackOpeningDialog({
@@ -120,95 +126,96 @@ export function DailyPackOpeningDialog({
   onClose,
   onGoToCollection,
 }: DailyPackOpeningDialogProps) {
-  const revealTimerRef = useRef<number | null>(null)
-  const [isRevealed, setIsRevealed] = useState(!animateOnOpen && pack.status === 'opened')
-  const [selectedReward, setSelectedReward] = useState<PackReward | null>(null)
+  const revealTimerRef = useRef<number | null>(null);
+  const [isRevealed, setIsRevealed] = useState(!animateOnOpen && pack.status === "opened");
+  const [selectedReward, setSelectedReward] = useState<PackReward | null>(null);
 
   useEffect(() => {
-    setIsRevealed(!animateOnOpen && pack.status === 'opened')
-    setSelectedReward(null)
-    revealTimerRef.current = clearBrowserTimeout(revealTimerRef.current)
+    setIsRevealed(!animateOnOpen && pack.status === "opened");
+    setSelectedReward(null);
+    revealTimerRef.current = clearBrowserTimeout(revealTimerRef.current);
 
     if (!animateOnOpen) {
-      return
+      return;
     }
 
     revealTimerRef.current = window.setTimeout(() => {
-      setIsRevealed(true)
-    }, REVEAL_DELAY_MS)
+      setIsRevealed(true);
+    }, REVEAL_DELAY_MS);
 
     return () => {
-      revealTimerRef.current = clearBrowserTimeout(revealTimerRef.current)
-    }
-  }, [animateOnOpen, pack.id, pack.status])
+      revealTimerRef.current = clearBrowserTimeout(revealTimerRef.current);
+    };
+  }, [animateOnOpen, pack.id, pack.status]);
 
   useEffect(() => {
     if (!selectedReward) {
-      return
+      return;
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setSelectedReward(null)
+      if (event.key === "Escape") {
+        setSelectedReward(null);
       }
-    }
+    };
 
-    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [selectedReward])
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedReward]);
 
   const rewards = pack.revealResults
     .map((reveal) => {
-      const entry = entriesByNumber[reveal.number]
+      const entry = entriesByNumber[reveal.number];
       if (!entry) {
-        return null
+        return null;
       }
 
       return {
         entry,
         reveal,
-      }
+      };
     })
-    .filter((reward): reward is PackReward => Boolean(reward))
+    .filter((reward): reward is PackReward => Boolean(reward));
 
-  const isReadyToOpen = pack.status === 'sealed' && !animateOnOpen
-  const isReviewMode = pack.status === 'opened' && !animateOnOpen
-  const canInspectRewards = pack.status === 'opened' && (isRevealed || isReviewMode)
+  const isReadyToOpen = pack.status === "sealed" && !animateOnOpen;
+  const isReviewMode = pack.status === "opened" && !animateOnOpen;
+  const canInspectRewards = pack.status === "opened" && (isRevealed || isReviewMode);
 
   const openRewardPreview = (reward: PackReward) => {
     if (!canInspectRewards) {
-      return
+      return;
     }
 
-    setSelectedReward(reward)
-  }
+    setSelectedReward(reward);
+  };
 
   const handleRewardKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>, reward: PackReward) => {
     if (!canInspectRewards) {
-      return
+      return;
     }
 
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      setSelectedReward(reward)
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      setSelectedReward(reward);
     }
-  }
+  };
 
   const hintText =
     remainingPacks > 0
-      ? `${remainingPacks} pack${remainingPacks > 1 ? 's' : ''} still sealed today.`
-      : 'All daily packs are open. Come back after midnight for a fresh run.'
+      ? `${remainingPacks} pack${remainingPacks > 1 ? "s" : ""} still sealed today.`
+      : "All daily packs are open. Come back after midnight for a fresh run.";
+  const packDisplayName = isGoldDailyPackId(pack.id) ? `Gold Pack ${pack.id}` : `Pack ${pack.id}`;
 
   const title = isReadyToOpen
-    ? `Pack ${pack.id} ready to open`
+    ? `${packDisplayName} ready to open`
     : animateOnOpen
       ? isRevealed
-        ? `Pack ${pack.id} opened`
-        : `Opening pack ${pack.id}`
-      : `Pack ${pack.id} review`
+        ? `${packDisplayName} opened`
+        : `Opening ${packDisplayName}`
+      : `${packDisplayName} review`;
 
   return (
     <div
@@ -226,12 +233,14 @@ export function DailyPackOpeningDialog({
             <h2 className={styles.dialogTitle}>{title}</h2>
             <p className={styles.dialogMeta}>
               {isReadyToOpen
-                ? 'Click the pack to tear it open. Rewards are only granted once you open it from this screen.'
+                ? isGoldDailyPackId(pack.id)
+                  ? "Click the gold pack to tear it open. It only contains rare, epic, and legendary GIFs, and rewards are only granted once from this screen."
+                  : "Click the pack to tear it open. Rewards are only granted once you open it from this screen."
                 : animateOnOpen
-                ? isRevealed
-                  ? 'Five GIFs are now in your collection. You can review this pack again any time today.'
-                  : 'The wrapper tears open first, then the five rewards fan out and flip face-up.'
-                : 'This pack is already open. Reviewing it does not grant rewards again.'}
+                  ? isRevealed
+                    ? "Five GIFs are now in your collection. You can review this pack again any time today."
+                    : "The wrapper tears open first, then the five rewards fan out and flip face-up."
+                  : "This pack is already open. Reviewing it does not grant rewards again."}
             </p>
           </div>
 
@@ -246,7 +255,7 @@ export function DailyPackOpeningDialog({
               type="button"
               className={styles.dialogPackTrigger}
               onClick={onOpenPack}
-              aria-label={`Click pack ${pack.id} to open`}
+              aria-label={`Click ${packDisplayName} to open`}
             >
               <div className={styles.dialogPackStage} aria-hidden="true">
                 <div className={styles.dialogPackBodyPiece}>
@@ -263,7 +272,9 @@ export function DailyPackOpeningDialog({
 
               <div className={styles.dialogPackPrompt}>
                 <span className={styles.dialogPackPromptBadge}>Click to open</span>
-                <p className={styles.dialogPackPromptText}>Tear the wrapper to reveal the five GIFs inside.</p>
+                <p className={styles.dialogPackPromptText}>
+                  Tear the wrapper to reveal the five GIFs inside.
+                </p>
               </div>
             </button>
           </div>
@@ -298,7 +309,7 @@ export function DailyPackOpeningDialog({
                     className={styles.dialogCardButton}
                     onClick={() => openRewardPreview({ entry, reveal })}
                     onKeyDown={(event) => handleRewardKeyDown(event, { entry, reveal })}
-                    role={canInspectRewards ? 'button' : undefined}
+                    role={canInspectRewards ? "button" : undefined}
                     tabIndex={canInspectRewards ? 0 : -1}
                     aria-disabled={!canInspectRewards}
                     data-disabled={!canInspectRewards}
@@ -349,7 +360,7 @@ export function DailyPackOpeningDialog({
             <div className={styles.dialogActionGroup}>
               <button
                 type="button"
-                className={actionButton({ tone: 'secondary' })}
+                className={actionButton({ tone: "secondary" })}
                 onClick={onGoToCollection}
                 disabled={!isRevealed}
               >
@@ -357,7 +368,7 @@ export function DailyPackOpeningDialog({
               </button>
               <button
                 type="button"
-                className={actionButton({ tone: 'primary' })}
+                className={actionButton({ tone: "primary" })}
                 onClick={onClose}
                 disabled={!isRevealed}
               >
@@ -390,7 +401,7 @@ export function DailyPackOpeningDialog({
 
             <button
               type="button"
-              className={actionButton({ tone: 'secondary' })}
+              className={actionButton({ tone: "secondary" })}
               onClick={() => setSelectedReward(null)}
             >
               Close
@@ -399,5 +410,5 @@ export function DailyPackOpeningDialog({
         </div>
       ) : null}
     </div>
-  )
+  );
 }

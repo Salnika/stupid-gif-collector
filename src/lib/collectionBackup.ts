@@ -1,87 +1,87 @@
-import { DEFAULT_GIF_RARITY, isGifRarity, type GifRarity } from './rarity'
+import { DEFAULT_GIF_RARITY, isGifRarity, type GifRarity } from "./rarity";
 
-const BACKUP_HEADER = 'SVC-BACKUP|1'
-const RECORD_EXPORT_TIMESTAMP = 'TS'
-const RECORD_GIF = 'G'
+const BACKUP_HEADER = "SVC-BACKUP|1";
+const RECORD_EXPORT_TIMESTAMP = "TS";
+const RECORD_GIF = "G";
 
-const safeEncode = (value: string): string => encodeURIComponent(value)
+const safeEncode = (value: string): string => encodeURIComponent(value);
 
 const safeDecode = (value: string): string => {
   try {
-    return decodeURIComponent(value)
+    return decodeURIComponent(value);
   } catch {
-    return value
+    return value;
   }
-}
+};
 
 const toPositiveInt = (value: unknown, fallback: number): number => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return fallback
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
   }
 
-  const integer = Math.floor(value)
-  return integer > 0 ? integer : fallback
-}
+  const integer = Math.floor(value);
+  return integer > 0 ? integer : fallback;
+};
 
 const toNonEmptyString = (value: unknown, fallback: string): string => {
-  if (typeof value !== 'string') {
-    return fallback
+  if (typeof value !== "string") {
+    return fallback;
   }
 
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : fallback
-}
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : fallback;
+};
 
 export type CollectionBackupEntry = {
-  number: number
-  name: string
-  collection: string
-  rarity: GifRarity
-  path: string
-  unlockedAt: number
-  count: number
-  favorite: boolean
-}
+  number: number;
+  name: string;
+  collection: string;
+  rarity: GifRarity;
+  path: string;
+  unlockedAt: number;
+  count: number;
+  favorite: boolean;
+};
 
 export type CollectionBackup = {
-  version: 1
-  exportedAt: number
-  entries: CollectionBackupEntry[]
-}
+  version: 1;
+  exportedAt: number;
+  entries: CollectionBackupEntry[];
+};
 
 export type CollectionBackupSourceGif = {
-  number: number
-  name: string
-  collection: string
-  rarity: GifRarity
-  path: string
-  unlockedAt: number
-  count: number
-}
+  number: number;
+  name: string;
+  collection: string;
+  rarity: GifRarity;
+  path: string;
+  unlockedAt: number;
+  count: number;
+};
 
 type CollectionBackupSourceState = {
-  unlockedByNumber: Record<number, CollectionBackupSourceGif>
-  favoriteByNumber: Record<number, true>
-}
+  unlockedByNumber: Record<number, CollectionBackupSourceGif>;
+  favoriteByNumber: Record<number, true>;
+};
 
 const normalizeBackupEntry = (
-  entry: Partial<CollectionBackupEntry> & Pick<CollectionBackupEntry, 'number'>,
+  entry: Partial<CollectionBackupEntry> & Pick<CollectionBackupEntry, "number">,
 ): CollectionBackupEntry => {
-  const number = toPositiveInt(entry.number, 1)
-  const count = toPositiveInt(entry.count, 1)
-  const unlockedAt = toPositiveInt(entry.unlockedAt, Date.now())
+  const number = toPositiveInt(entry.number, 1);
+  const count = toPositiveInt(entry.count, 1);
+  const unlockedAt = toPositiveInt(entry.unlockedAt, Date.now());
 
   return {
     number,
     name: toNonEmptyString(entry.name, `GIF ${number}`),
-    collection: toNonEmptyString(entry.collection, 'unknown'),
+    collection: toNonEmptyString(entry.collection, "unknown"),
     rarity: isGifRarity(entry.rarity) ? entry.rarity : DEFAULT_GIF_RARITY,
-    path: typeof entry.path === 'string' ? entry.path : '',
+    path: typeof entry.path === "string" ? entry.path : "",
     unlockedAt,
     count,
     favorite: Boolean(entry.favorite),
-  }
-}
+  };
+};
 
 export const createCollectionBackup = ({
   unlockedByNumber,
@@ -94,20 +94,23 @@ export const createCollectionBackup = ({
         favorite: Boolean(favoriteByNumber[gif.number]),
       }),
     )
-    .sort((left, right) => left.number - right.number)
+    .sort((left, right) => left.number - right.number);
 
   return {
     version: 1,
     exportedAt: Date.now(),
     entries,
-  }
-}
+  };
+};
 
 export const serializeCollectionBackup = (backup: CollectionBackup): string => {
-  const lines = [BACKUP_HEADER, `${RECORD_EXPORT_TIMESTAMP}|${toPositiveInt(backup.exportedAt, Date.now())}`]
+  const lines = [
+    BACKUP_HEADER,
+    `${RECORD_EXPORT_TIMESTAMP}|${toPositiveInt(backup.exportedAt, Date.now())}`,
+  ];
 
   for (const rawEntry of backup.entries) {
-    const entry = normalizeBackupEntry(rawEntry)
+    const entry = normalizeBackupEntry(rawEntry);
     lines.push(
       [
         RECORD_GIF,
@@ -115,58 +118,58 @@ export const serializeCollectionBackup = (backup: CollectionBackup): string => {
         entry.rarity,
         entry.count,
         entry.unlockedAt,
-        entry.favorite ? '1' : '0',
+        entry.favorite ? "1" : "0",
         safeEncode(entry.name),
         safeEncode(entry.collection),
         safeEncode(entry.path),
-      ].join('|'),
-    )
+      ].join("|"),
+    );
   }
 
-  return `${lines.join('\n')}\n`
-}
+  return `${lines.join("\n")}\n`;
+};
 
 export const parseCollectionBackup = (rawBackup: string): CollectionBackup => {
-  const text = rawBackup.trim()
+  const text = rawBackup.trim();
   if (!text) {
-    throw new Error('Backup file is empty.')
+    throw new Error("Backup file is empty.");
   }
 
-  const lines = text.split(/\r?\n/)
+  const lines = text.split(/\r?\n/);
   if (lines[0] !== BACKUP_HEADER) {
-    throw new Error('Unsupported backup format.')
+    throw new Error("Unsupported backup format.");
   }
 
-  let exportedAt = Date.now()
-  const byNumber = new Map<number, CollectionBackupEntry>()
+  let exportedAt = Date.now();
+  const byNumber = new Map<number, CollectionBackupEntry>();
 
   for (const rawLine of lines.slice(1)) {
     if (!rawLine) {
-      continue
+      continue;
     }
 
-    const parts = rawLine.split('|')
-    const recordType = parts[0]
+    const parts = rawLine.split("|");
+    const recordType = parts[0];
 
     if (recordType === RECORD_EXPORT_TIMESTAMP) {
       if (parts.length >= 2) {
-        const timestamp = Number.parseInt(parts[1], 10)
-        exportedAt = toPositiveInt(timestamp, exportedAt)
+        const timestamp = Number.parseInt(parts[1], 10);
+        exportedAt = toPositiveInt(timestamp, exportedAt);
       }
-      continue
+      continue;
     }
 
     if (recordType !== RECORD_GIF) {
-      continue
+      continue;
     }
 
     if (parts.length !== 9) {
-      throw new Error('Corrupted backup line detected.')
+      throw new Error("Corrupted backup line detected.");
     }
 
-    const number = Number.parseInt(parts[1], 10)
+    const number = Number.parseInt(parts[1], 10);
     if (!Number.isFinite(number) || number < 1) {
-      continue
+      continue;
     }
 
     const entry = normalizeBackupEntry({
@@ -174,18 +177,18 @@ export const parseCollectionBackup = (rawBackup: string): CollectionBackup => {
       rarity: isGifRarity(parts[2]) ? parts[2] : DEFAULT_GIF_RARITY,
       count: Number.parseInt(parts[3], 10),
       unlockedAt: Number.parseInt(parts[4], 10),
-      favorite: parts[5] === '1' || parts[5].toLowerCase() === 'true',
+      favorite: parts[5] === "1" || parts[5].toLowerCase() === "true",
       name: safeDecode(parts[6]),
       collection: safeDecode(parts[7]),
       path: safeDecode(parts[8]),
-    })
+    });
 
-    byNumber.set(entry.number, entry)
+    byNumber.set(entry.number, entry);
   }
 
   return {
     version: 1,
     exportedAt,
     entries: Array.from(byNumber.values()).sort((left, right) => left.number - right.number),
-  }
-}
+  };
+};

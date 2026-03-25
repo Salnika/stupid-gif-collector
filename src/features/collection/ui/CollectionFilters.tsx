@@ -1,21 +1,21 @@
-import { toGifRarityLabel, type GifRarity } from '../../../lib/rarity'
-import { actionButton, rarityText } from '../../../shared/styles/recipes.css'
-import * as styles from './collection.css'
+import { toGifRarityLabel, type GifRarity } from "../../../lib/rarity";
+import { actionButton, rarityText } from "../../../shared/styles/recipes.css";
+import * as styles from "./collection.css";
 
 type CollectionFiltersProps = {
-  showFavoritesOnly: boolean
-  collectionDropdownValue: string
-  rarityDropdownValue: string
-  availableCollections: string[]
-  availableRarities: GifRarity[]
-  collectionFilters: string[]
-  rarityFilters: GifRarity[]
-  onShowFavoritesOnlyChange: (value: boolean) => void
-  onToggleCollectionFilter: (collection: string) => void
-  onToggleRarityFilter: (rarity: GifRarity) => void
-  onClearCollectionFilters: () => void
-  onClearRarityFilters: () => void
-}
+  showFavoritesOnly: boolean;
+  collectionDropdownValue: string;
+  rarityDropdownValue: string;
+  availableCollections: string[];
+  availableRarities: GifRarity[];
+  collectionFilters: string[];
+  rarityFilters: GifRarity[];
+  onShowFavoritesOnlyChange: (value: boolean) => void;
+  onToggleCollectionFilter: (collection: string) => void;
+  onToggleRarityFilter: (rarity: GifRarity) => void;
+  onClearCollectionFilters: () => void;
+  onClearRarityFilters: () => void;
+};
 
 export function CollectionFilters({
   showFavoritesOnly,
@@ -49,7 +49,7 @@ export function CollectionFilters({
           <div className={styles.multiSelectMenu}>
             <button
               type="button"
-              className={actionButton({ tone: 'secondary' })}
+              className={actionButton({ tone: "secondary" })}
               disabled={collectionFilters.length === 0}
               onClick={onClearCollectionFilters}
             >
@@ -76,7 +76,7 @@ export function CollectionFilters({
           <div className={styles.multiSelectMenu}>
             <button
               type="button"
-              className={actionButton({ tone: 'secondary' })}
+              className={actionButton({ tone: "secondary" })}
               disabled={rarityFilters.length === 0}
               onClick={onClearRarityFilters}
             >
@@ -96,5 +96,5 @@ export function CollectionFilters({
         </details>
       </label>
     </section>
-  )
+  );
 }

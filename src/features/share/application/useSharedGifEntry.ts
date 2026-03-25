@@ -1,66 +1,66 @@
-import { useEffect, useMemo, useState } from 'react'
-import { getEntryByNumber } from '../../catalog/data'
-import type { GifCatalogEntry } from '../../catalog/domain'
+import { useEffect, useMemo, useState } from "react";
+import { getEntryByNumber } from "../../catalog/data";
+import type { GifCatalogEntry } from "../../catalog/domain";
 
 const parseNumberParam = (value: string | undefined): number | null => {
   if (!value) {
-    return null
+    return null;
   }
 
-  const number = Number.parseInt(value, 10)
+  const number = Number.parseInt(value, 10);
   if (!Number.isFinite(number) || number < 1) {
-    return null
+    return null;
   }
 
-  return number
-}
+  return number;
+};
 
 export const useSharedGifEntry = (rawGifNumber: string | undefined) => {
-  const requestedNumber = useMemo(() => parseNumberParam(rawGifNumber), [rawGifNumber])
-  const [isLoading, setIsLoading] = useState(true)
-  const [entry, setEntry] = useState<GifCatalogEntry | null>(null)
+  const requestedNumber = useMemo(() => parseNumberParam(rawGifNumber), [rawGifNumber]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [entry, setEntry] = useState<GifCatalogEntry | null>(null);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     const loadEntry = async () => {
       if (requestedNumber === null) {
-        setEntry(null)
-        setIsLoading(false)
-        return
+        setEntry(null);
+        setIsLoading(false);
+        return;
       }
 
-      setIsLoading(true)
+      setIsLoading(true);
 
       try {
-        const nextEntry = await getEntryByNumber(requestedNumber)
+        const nextEntry = await getEntryByNumber(requestedNumber);
         if (cancelled) {
-          return
+          return;
         }
 
-        setEntry(nextEntry)
+        setEntry(nextEntry);
       } catch {
         if (cancelled) {
-          return
+          return;
         }
 
-        setEntry(null)
+        setEntry(null);
       } finally {
         if (!cancelled) {
-          setIsLoading(false)
+          setIsLoading(false);
         }
       }
-    }
+    };
 
-    void loadEntry()
+    void loadEntry();
 
     return () => {
-      cancelled = true
-    }
-  }, [requestedNumber])
+      cancelled = true;
+    };
+  }, [requestedNumber]);
 
   return {
     isLoading,
     entry,
-  }
-}
+  };
+};

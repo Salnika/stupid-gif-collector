@@ -1,24 +1,24 @@
-import type { ChangeEventHandler, RefObject } from 'react'
-import { actionButton } from '../../../shared/styles/recipes.css'
-import type { TransferStatus } from '../domain'
-import * as styles from './collection.css'
+import type { ChangeEventHandler, RefObject } from "react";
+import { actionButton } from "../../../shared/styles/recipes.css";
+import type { TransferStatus } from "../domain";
+import * as styles from "./collection.css";
 
 type CollectionHeaderProps = {
-  unlockedSummary: string
-  canExport: boolean
-  isTransferPending: boolean
-  transferStatus: TransferStatus | null
-  importInputRef: RefObject<HTMLInputElement | null>
-  onExport: () => void
-  onImportButtonClick: () => void
-  onImportFileChange: ChangeEventHandler<HTMLInputElement>
-}
+  unlockedSummary: string;
+  canExport: boolean;
+  isTransferPending: boolean;
+  transferStatus: TransferStatus | null;
+  importInputRef: RefObject<HTMLInputElement | null>;
+  onExport: () => void;
+  onImportButtonClick: () => void;
+  onImportFileChange: ChangeEventHandler<HTMLInputElement>;
+};
 
 const statusClassByTone = {
   info: styles.statusInfo,
   success: styles.statusSuccess,
   error: styles.statusError,
-} as const
+} as const;
 
 export function CollectionHeader({
   unlockedSummary,
@@ -38,7 +38,7 @@ export function CollectionHeader({
       <div className={styles.transferRow}>
         <button
           type="button"
-          className={actionButton({ tone: 'primary' })}
+          className={actionButton({ tone: "primary" })}
           disabled={isTransferPending || !canExport}
           onClick={onExport}
         >
@@ -46,7 +46,7 @@ export function CollectionHeader({
         </button>
         <button
           type="button"
-          className={actionButton({ tone: 'secondary' })}
+          className={actionButton({ tone: "secondary" })}
           disabled={isTransferPending}
           onClick={onImportButtonClick}
         >
@@ -67,5 +67,5 @@ export function CollectionHeader({
         </p>
       ) : null}
     </header>
-  )
+  );
 }

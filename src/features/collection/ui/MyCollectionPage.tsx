@@ -1,12 +1,12 @@
-import { CollectionFilters } from './CollectionFilters'
-import { CollectionGrid } from './CollectionGrid'
-import { CollectionHeader } from './CollectionHeader'
-import { CollectionModal } from './CollectionModal'
-import { useCollectionViewModel } from '../application/useCollectionViewModel'
-import * as styles from './collection.css'
+import { CollectionFilters } from "./CollectionFilters";
+import { CollectionGrid } from "./CollectionGrid";
+import { CollectionHeader } from "./CollectionHeader";
+import { CollectionModal } from "./CollectionModal";
+import { useCollectionViewModel } from "../application/useCollectionViewModel";
+import * as styles from "./collection.css";
 
 export function MyCollectionPageView() {
-  const viewModel = useCollectionViewModel()
+  const viewModel = useCollectionViewModel();
 
   return (
     <main className={styles.page}>
@@ -40,7 +40,9 @@ export function MyCollectionPageView() {
         ) : null}
 
         {viewModel.sortedUnlockedGifs.length === 0 ? (
-          <p className={styles.emptyState}>No unlocked GIFs yet. Open today&apos;s packs on the Home page to add some.</p>
+          <p className={styles.emptyState}>
+            No unlocked GIFs yet. Open today&apos;s packs on the Home page to add some.
+          </p>
         ) : viewModel.filteredUnlockedGifs.length === 0 ? (
           <p className={styles.emptyState}>No GIF matches the selected filters.</p>
         ) : (
@@ -59,5 +61,5 @@ export function MyCollectionPageView() {
         <CollectionModal selectedGif={viewModel.selectedGif} onClose={viewModel.closeSelectedGif} />
       </section>
     </main>
-  )
+  );
 }

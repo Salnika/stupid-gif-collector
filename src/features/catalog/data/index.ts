@@ -3,4 +3,4 @@ export {
   loadIndex,
   loadManifest,
   resetCatalogRepositoryCache,
-} from './catalogRepository'
+} from "./catalogRepository";

@@ -1,19 +1,19 @@
-import type { GifRarity } from '../../../lib/rarity'
+import type { GifRarity } from "../../../lib/rarity";
 
 export type GifCatalogEntry = {
-  number: number
-  path: string
-  name: string
-  collection: string
-  rarity: GifRarity
-}
+  number: number;
+  path: string;
+  name: string;
+  collection: string;
+  rarity: GifRarity;
+};
 
 export type GifManifest = {
-  total: number
-  byNumber: Record<number, GifCatalogEntry>
-}
+  total: number;
+  byNumber: Record<number, GifCatalogEntry>;
+};
 
 export type GifIndex = {
-  total: number
-  paths: string[]
-}
+  total: number;
+  paths: string[];
+};

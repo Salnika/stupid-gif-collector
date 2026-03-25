@@ -1,12 +1,12 @@
 export const copyText = async (value: string): Promise<boolean> => {
   if (!value) {
-    return false
+    return false;
   }
 
   try {
-    await navigator.clipboard.writeText(value)
-    return true
+    await navigator.clipboard.writeText(value);
+    return true;
   } catch {
-    return false
+    return false;
   }
-}
+};

@@ -1,86 +1,95 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import path from 'node:path'
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 
-const PROJECT_ROOT = process.cwd()
-const DIST_ROOT = path.join(PROJECT_ROOT, 'dist')
-const MANIFEST_PATH = path.join(DIST_ROOT, 'collections-manifest.json')
-const SHARE_ROOT = path.join(DIST_ROOT, 'share')
-const DEFAULT_SITE_ORIGIN = 'https://salnika.github.io'
-const DEFAULT_SITE_BASE_PATH = '/stupid-gif-collector'
-const ALLOWED_RARITIES = new Set(['common', 'uncommon', 'rare', 'epic', 'legendary'])
-const WRITE_BATCH_SIZE = 160
+const PROJECT_ROOT = process.cwd();
+const DIST_ROOT = path.join(PROJECT_ROOT, "dist");
+const MANIFEST_PATH = path.join(DIST_ROOT, "collections-manifest.json");
+const SHARE_ROOT = path.join(DIST_ROOT, "share");
+const DEFAULT_SITE_ORIGIN = "https://salnika.github.io";
+const DEFAULT_SITE_BASE_PATH = "/stupid-gif-collector";
+const ALLOWED_RARITIES = new Set(["common", "uncommon", "rare", "epic", "legendary"]);
+const WRITE_BATCH_SIZE = 160;
 
 const escapeHtml = (value) =>
   String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
-const normalizeOrigin = (value) => value.trim().replace(/\/+$/, '')
+const normalizeOrigin = (value) => value.trim().replace(/\/+$/, "");
 
 const normalizeBasePath = (value) => {
   if (!value) {
-    return ''
+    return "";
   }
 
-  const trimmed = value.trim()
-  if (!trimmed || trimmed === '/') {
-    return ''
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "/") {
+    return "";
   }
 
-  const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
-  return withLeadingSlash.replace(/\/+$/, '')
-}
+  const withLeadingSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return withLeadingSlash.replace(/\/+$/, "");
+};
 
 const toBasePath = (basePath, assetPath) => {
-  const normalizedAssetPath = assetPath.startsWith('/') ? assetPath : `/${assetPath}`
-  return basePath ? `${basePath}${normalizedAssetPath}` : normalizedAssetPath
-}
+  const normalizedAssetPath = assetPath.startsWith("/") ? assetPath : `/${assetPath}`;
+  return basePath ? `${basePath}${normalizedAssetPath}` : normalizedAssetPath;
+};
 
-const toAbsoluteUrl = (origin, basePath, assetPath) => `${origin}${toBasePath(basePath, assetPath)}`
+const toAbsoluteUrl = (origin, basePath, assetPath) =>
+  `${origin}${toBasePath(basePath, assetPath)}`;
 
 const toRarityLabel = (rarity) => {
-  if (typeof rarity !== 'string' || !ALLOWED_RARITIES.has(rarity)) {
-    return 'Common'
+  if (typeof rarity !== "string" || !ALLOWED_RARITIES.has(rarity)) {
+    return "Common";
   }
 
-  return rarity.charAt(0).toUpperCase() + rarity.slice(1)
-}
+  return rarity.charAt(0).toUpperCase() + rarity.slice(1);
+};
 
 const resolveSiteConfig = () => {
-  const repository = process.env.GITHUB_REPOSITORY?.trim() ?? ''
-  const [owner, repoName] = repository.split('/')
+  const repository = process.env.GITHUB_REPOSITORY?.trim() ?? "";
+  const [owner, repoName] = repository.split("/");
 
   const siteOrigin =
     process.env.SHARE_SITE_ORIGIN && process.env.SHARE_SITE_ORIGIN.trim().length > 0
       ? normalizeOrigin(process.env.SHARE_SITE_ORIGIN)
       : owner && owner.length > 0
         ? `https://${owner}.github.io`
-        : DEFAULT_SITE_ORIGIN
+        : DEFAULT_SITE_ORIGIN;
 
   const basePath =
     process.env.SHARE_SITE_BASE_PATH && process.env.SHARE_SITE_BASE_PATH.trim().length > 0
       ? normalizeBasePath(process.env.SHARE_SITE_BASE_PATH)
       : repoName && repoName.length > 0
         ? normalizeBasePath(`/${repoName}`)
-        : normalizeBasePath(DEFAULT_SITE_BASE_PATH)
+        : normalizeBasePath(DEFAULT_SITE_BASE_PATH);
 
-  return { siteOrigin, basePath }
-}
+  return { siteOrigin, basePath };
+};
 
-const renderSharePage = ({ number, name, collection, rarityLabel, imageUrl, shareUrl, homeUrl }) => {
-  const safeTitle = escapeHtml(`GIF #${number} - ${name}`)
-  const safeCollection = escapeHtml(collection)
-  const safeRarity = escapeHtml(rarityLabel)
-  const safeImageUrl = escapeHtml(imageUrl)
-  const safeShareUrl = escapeHtml(shareUrl)
-  const safeHomeUrl = escapeHtml(homeUrl)
-  const pageTitle = `${safeTitle} | Stupid GIF Collector`
+const renderSharePage = ({
+  number,
+  name,
+  collection,
+  rarityLabel,
+  imageUrl,
+  shareUrl,
+  homeUrl,
+}) => {
+  const safeTitle = escapeHtml(`GIF #${number} - ${name}`);
+  const safeCollection = escapeHtml(collection);
+  const safeRarity = escapeHtml(rarityLabel);
+  const safeImageUrl = escapeHtml(imageUrl);
+  const safeShareUrl = escapeHtml(shareUrl);
+  const safeHomeUrl = escapeHtml(homeUrl);
+  const pageTitle = `${safeTitle} | Stupid GIF Collector`;
   const description = escapeHtml(
     `GIF #${number} from "${collection}" collection. Rarity: ${rarityLabel}.`,
-  )
+  );
 
   return `<!doctype html>
 <html lang="en">
@@ -153,43 +162,45 @@ const renderSharePage = ({ number, name, collection, rarityLabel, imageUrl, shar
     </main>
   </body>
 </html>
-`
-}
+`;
+};
 
 const build = async () => {
-  const manifestRaw = await readFile(MANIFEST_PATH, 'utf8')
-  const manifest = JSON.parse(manifestRaw)
-  const byNumber = manifest?.byNumber
+  const manifestRaw = await readFile(MANIFEST_PATH, "utf8");
+  const manifest = JSON.parse(manifestRaw);
+  const byNumber = manifest?.byNumber;
 
-  if (!byNumber || typeof byNumber !== 'object') {
-    throw new Error('Invalid collections-manifest.json: missing "byNumber" object')
+  if (!byNumber || typeof byNumber !== "object") {
+    throw new Error('Invalid collections-manifest.json: missing "byNumber" object');
   }
 
-  const { siteOrigin, basePath } = resolveSiteConfig()
-  const homeUrl = toBasePath(basePath, '/')
+  const { siteOrigin, basePath } = resolveSiteConfig();
+  const homeUrl = toBasePath(basePath, "/");
   const entries = Object.entries(byNumber)
     .map(([rawNumber, rawValue]) => {
-      const number = Number.parseInt(rawNumber, 10)
-      if (!Number.isFinite(number) || number < 1 || !rawValue || typeof rawValue !== 'object') {
-        return null
+      const number = Number.parseInt(rawNumber, 10);
+      if (!Number.isFinite(number) || number < 1 || !rawValue || typeof rawValue !== "object") {
+        return null;
       }
 
-      const value = rawValue
-      const pathValue = typeof value.path === 'string' ? value.path : ''
+      const value = rawValue;
+      const pathValue = typeof value.path === "string" ? value.path : "";
       if (!pathValue) {
-        return null
+        return null;
       }
 
       const name =
-        typeof value.name === 'string' && value.name.trim().length > 0 ? value.name : `GIF #${number}`
+        typeof value.name === "string" && value.name.trim().length > 0
+          ? value.name
+          : `GIF #${number}`;
       const collection =
-        typeof value.collection === 'string' && value.collection.trim().length > 0
+        typeof value.collection === "string" && value.collection.trim().length > 0
           ? value.collection
-          : 'Unknown collection'
-      const rarityLabel = toRarityLabel(value.rarity)
-      const sharePath = `/share/${number}/`
-      const imageUrl = toAbsoluteUrl(siteOrigin, basePath, pathValue)
-      const shareUrl = toAbsoluteUrl(siteOrigin, basePath, sharePath)
+          : "Unknown collection";
+      const rarityLabel = toRarityLabel(value.rarity);
+      const sharePath = `/share/${number}/`;
+      const imageUrl = toAbsoluteUrl(siteOrigin, basePath, pathValue);
+      const shareUrl = toAbsoluteUrl(siteOrigin, basePath, sharePath);
 
       return {
         number,
@@ -202,27 +213,27 @@ const build = async () => {
           shareUrl,
           homeUrl,
         }),
-      }
+      };
     })
     .filter((entry) => entry !== null)
-    .sort((a, b) => a.number - b.number)
+    .sort((a, b) => a.number - b.number);
 
-  await mkdir(SHARE_ROOT, { recursive: true })
+  await mkdir(SHARE_ROOT, { recursive: true });
 
   for (let index = 0; index < entries.length; index += WRITE_BATCH_SIZE) {
-    const batch = entries.slice(index, index + WRITE_BATCH_SIZE)
+    const batch = entries.slice(index, index + WRITE_BATCH_SIZE);
     await Promise.all(
       batch.map(async (entry) => {
-        const targetDir = path.join(SHARE_ROOT, String(entry.number))
-        await mkdir(targetDir, { recursive: true })
-        await writeFile(path.join(targetDir, 'index.html'), entry.html)
+        const targetDir = path.join(SHARE_ROOT, String(entry.number));
+        await mkdir(targetDir, { recursive: true });
+        await writeFile(path.join(targetDir, "index.html"), entry.html);
       }),
-    )
+    );
   }
 
   console.log(
-    `Generated ${entries.length} static share pages in ${SHARE_ROOT} (origin: ${siteOrigin}, base: ${basePath || '/'})`,
-  )
-}
+    `Generated ${entries.length} static share pages in ${SHARE_ROOT} (origin: ${siteOrigin}, base: ${basePath || "/"})`,
+  );
+};
 
-await build()
+await build();

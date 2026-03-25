@@ -1,2 +1,2 @@
-export { GifCard } from './GifCard'
-export { RarityBadge } from './RarityBadge'
+export { GifCard } from "./GifCard";
+export { RarityBadge } from "./RarityBadge";

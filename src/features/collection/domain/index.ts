@@ -1,1 +1,1 @@
-export type { CollectionGifEntry, TransferStatus } from './collectionTypes'
+export type { CollectionGifEntry, TransferStatus } from "./collectionTypes";

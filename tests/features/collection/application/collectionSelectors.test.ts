@@ -1,49 +1,57 @@
-import { describe, expect, it } from 'vitest'
-import { createCollectionEntries, filterCollectionEntries } from '../../../../src/features/collection/application/collectionSelectors'
+import { describe, expect, it } from "vite-plus/test";
+import {
+  createCollectionEntries,
+  filterCollectionEntries,
+} from "../../../../src/features/collection/application/collectionSelectors";
+import type { UnlockedGif } from "../../../../src/features/collection/data/unlockedGifsStore";
 
-describe('collectionSelectors', () => {
-  const unlockedByNumber = {
+describe("collectionSelectors", () => {
+  const unlockedByNumber: Record<number, UnlockedGif> = {
     2: {
       number: 2,
-      path: '/b.gif',
-      name: 'B',
-      collection: 'beta',
-      rarity: 'common',
+      path: "/b.gif",
+      name: "B",
+      collection: "beta",
+      rarity: "common",
       unlockedAt: 2,
       count: 1,
     },
     1: {
       number: 1,
-      path: '/a.gif',
-      name: 'A',
-      collection: 'alpha',
-      rarity: 'common',
+      path: "/a.gif",
+      name: "A",
+      collection: "alpha",
+      rarity: "common",
       unlockedAt: 1,
       count: 3,
     },
-  }
+  };
 
-  it('builds sorted entries with favorite and rarity overrides', () => {
-    const entries = createCollectionEntries(unlockedByNumber, { 1: true }, { 1: 'legendary' })
+  it("builds sorted entries with favorite and rarity overrides", () => {
+    const entries = createCollectionEntries(unlockedByNumber, { 1: true }, { 1: "legendary" });
 
-    expect(entries.map((entry) => entry.number)).toEqual([1, 2])
+    expect(entries.map((entry) => entry.number)).toEqual([1, 2]);
     expect(entries[0]).toMatchObject({
-      rarity: 'legendary',
+      rarity: "legendary",
       isFavorite: true,
       count: 3,
-    })
-  })
+    });
+  });
 
-  it('filters by favorites, collection and rarity', () => {
-    const entries = createCollectionEntries(unlockedByNumber, { 1: true }, { 1: 'rare', 2: 'common' })
+  it("filters by favorites, collection and rarity", () => {
+    const entries = createCollectionEntries(
+      unlockedByNumber,
+      { 1: true },
+      { 1: "rare", 2: "common" },
+    );
 
     const filtered = filterCollectionEntries(entries, {
       showFavoritesOnly: true,
-      collectionFilters: ['alpha'],
-      rarityFilters: ['rare'],
-    })
+      collectionFilters: ["alpha"],
+      rarityFilters: ["rare"],
+    });
 
-    expect(filtered).toHaveLength(1)
-    expect(filtered[0].number).toBe(1)
-  })
-})
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0].number).toBe(1);
+  });
+});

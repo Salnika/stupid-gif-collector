@@ -1,9 +1,6 @@
-import { forwardRef } from 'react'
+import { forwardRef } from "react";
 
-export const InfiniteLoader = forwardRef<HTMLDivElement>(function InfiniteLoader(
-  _props,
-  ref,
-) {
+export const InfiniteLoader = forwardRef<HTMLDivElement>(function InfiniteLoader(_props, ref) {
   return (
     <div className="portal-loader" ref={ref} aria-hidden="true">
       <span className="portal-loader__aura" />
@@ -12,5 +9,5 @@ export const InfiniteLoader = forwardRef<HTMLDivElement>(function InfiniteLoader
       <span className="portal-loader__sprite portal-loader__sprite--front" />
       <span className="portal-loader__core" />
     </div>
-  )
-})
+  );
+});
