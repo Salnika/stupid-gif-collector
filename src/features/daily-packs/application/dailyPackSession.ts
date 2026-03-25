@@ -1,22 +1,33 @@
 import type { GifCatalogEntry } from "../../catalog/domain";
 import {
-  DAILY_GIFS_TOTAL,
-  DAILY_GOLD_PACK_ID,
   DAILY_PACK_COUNT,
   GIFS_PER_DAILY_PACK,
-  isGoldDailyPackId,
+  GOLD_PACK_CHANCE,
+  PACK_GENERATION_INTERVAL_MS,
   type DailyPack,
   type DailyPackSession,
+  type DailyPackVariant,
 } from "../domain";
 
 type CreateDailyPackSessionOptions = {
-  dayKey?: string;
   generatedAt?: number;
   random?: () => number;
 };
 
-const isIntegerInRange = (value: unknown, min: number, max: number): value is number =>
-  Number.isInteger(value) && Number(value) >= min && Number(value) <= max;
+type ReplenishDailyPackSessionOptions = {
+  now?: number;
+  random?: () => number;
+};
+
+type PackCatalogPools = {
+  uniqueEntries: GifCatalogEntry[];
+  premiumEntries: GifCatalogEntry[];
+};
+
+const MAX_OPENED_PACK_HISTORY = DAILY_PACK_COUNT;
+
+const isIntegerAtLeast = (value: unknown, minimum: number): value is number =>
+  Number.isInteger(value) && Number(value) >= minimum;
 
 const dedupeCatalogEntries = (entries: GifCatalogEntry[]): GifCatalogEntry[] => {
   const uniqueEntries = new Map<number, GifCatalogEntry>();
@@ -47,90 +58,137 @@ const shuffleEntries = (entries: GifCatalogEntry[], random: () => number): GifCa
   return shuffled;
 };
 
-const isGoldPackEntry = (entry: GifCatalogEntry): boolean =>
+const isPremiumEntry = (entry: GifCatalogEntry): boolean =>
   entry.rarity === "rare" || entry.rarity === "epic" || entry.rarity === "legendary";
 
-const createPack = (id: number, gifNumbers: number[]): DailyPack => ({
+const createCatalogPools = (entries: GifCatalogEntry[]): PackCatalogPools => {
+  const uniqueEntries = dedupeCatalogEntries(entries);
+
+  if (uniqueEntries.length < GIFS_PER_DAILY_PACK) {
+    throw new Error(`Pack drops require at least ${GIFS_PER_DAILY_PACK} GIFs in the catalog.`);
+  }
+
+  return {
+    uniqueEntries,
+    premiumEntries: uniqueEntries.filter(isPremiumEntry),
+  };
+};
+
+const createPack = (id: number, gifNumbers: number[], variant: DailyPackVariant): DailyPack => ({
   id,
+  variant,
   gifNumbers,
   status: "sealed",
   openedAt: null,
   revealResults: [],
 });
 
-export const getLocalDayKey = (date = new Date()): string => {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
+const createPackFromCatalogPools = (
+  id: number,
+  pools: PackCatalogPools,
+  random: () => number,
+): DailyPack => {
+  const canRollGold = pools.premiumEntries.length >= GIFS_PER_DAILY_PACK;
+  const variant: DailyPackVariant =
+    canRollGold && random() < GOLD_PACK_CHANCE ? "gold" : "standard";
+  const sourceEntries = variant === "gold" ? pools.premiumEntries : pools.uniqueEntries;
+  const gifNumbers = shuffleEntries(sourceEntries, random)
+    .slice(0, GIFS_PER_DAILY_PACK)
+    .map((entry) => entry.number);
 
-  return `${year}-${month}-${day}`;
+  return createPack(id, gifNumbers, variant);
+};
+
+const keepRecentOpenedPacks = (packs: DailyPack[]): DailyPack[] => {
+  const openedPackIds = new Set(
+    packs
+      .filter((pack) => pack.status === "opened")
+      .slice(-MAX_OPENED_PACK_HISTORY)
+      .map((pack) => pack.id),
+  );
+
+  return packs.filter((pack) => pack.status === "sealed" || openedPackIds.has(pack.id));
+};
+
+const resolveSelectedPackId = (packs: DailyPack[], selectedPackId: number): number => {
+  const selectedSealedPack = packs.find(
+    (pack) => pack.id === selectedPackId && pack.status === "sealed",
+  );
+  if (selectedSealedPack) {
+    return selectedSealedPack.id;
+  }
+
+  const firstSealedPack = packs.find((pack) => pack.status === "sealed");
+  if (firstSealedPack) {
+    return firstSealedPack.id;
+  }
+
+  const latestPack = packs[packs.length - 1];
+  return latestPack?.id ?? selectedPackId;
+};
+
+const countSealedPacks = (packs: DailyPack[]): number =>
+  packs.filter((pack) => pack.status === "sealed").length;
+
+const getElapsedGenerationCount = (lastGeneratedAt: number, now: number): number => {
+  if (!Number.isFinite(lastGeneratedAt) || !Number.isFinite(now) || now <= lastGeneratedAt) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor((now - lastGeneratedAt) / PACK_GENERATION_INTERVAL_MS));
 };
 
 export const createDailyPackSession = (
   entries: GifCatalogEntry[],
-  {
-    dayKey = getLocalDayKey(),
-    generatedAt = Date.now(),
-    random = Math.random,
-  }: CreateDailyPackSessionOptions = {},
+  { generatedAt = Date.now(), random = Math.random }: CreateDailyPackSessionOptions = {},
 ): DailyPackSession => {
-  const uniqueEntries = dedupeCatalogEntries(entries);
-
-  if (uniqueEntries.length < DAILY_GIFS_TOTAL) {
-    throw new Error(`Daily packs require at least ${DAILY_GIFS_TOTAL} GIFs in the catalog.`);
-  }
-
-  const goldEntries = shuffleEntries(uniqueEntries.filter(isGoldPackEntry), random).slice(
-    0,
-    GIFS_PER_DAILY_PACK,
-  );
-
-  if (goldEntries.length < GIFS_PER_DAILY_PACK) {
-    throw new Error(
-      `Gold daily packs require at least ${GIFS_PER_DAILY_PACK} rare, epic, or legendary GIFs in the catalog.`,
-    );
-  }
-
-  const goldEntryNumbers = new Set(goldEntries.map((entry) => entry.number));
-  const standardEntries = shuffleEntries(
-    uniqueEntries.filter((entry) => !goldEntryNumbers.has(entry.number)),
-    random,
-  ).slice(0, DAILY_GIFS_TOTAL - GIFS_PER_DAILY_PACK);
-
-  if (standardEntries.length < DAILY_GIFS_TOTAL - GIFS_PER_DAILY_PACK) {
-    throw new Error(
-      `Daily packs require at least ${DAILY_GIFS_TOTAL - GIFS_PER_DAILY_PACK} remaining GIFs after reserving the gold pack.`,
-    );
-  }
-
-  const packs: DailyPack[] = [];
-
-  for (let packIndex = 0; packIndex < DAILY_PACK_COUNT; packIndex += 1) {
-    const packId = packIndex + 1;
-    if (isGoldDailyPackId(packId)) {
-      packs.push(
-        createPack(
-          DAILY_GOLD_PACK_ID,
-          goldEntries.map((entry) => entry.number),
-        ),
-      );
-      continue;
-    }
-
-    const start = packIndex * GIFS_PER_DAILY_PACK;
-    const gifNumbers = standardEntries
-      .slice(start, start + GIFS_PER_DAILY_PACK)
-      .map((entry) => entry.number);
-
-    packs.push(createPack(packId, gifNumbers));
-  }
+  const pools = createCatalogPools(entries);
+  const firstPack = createPackFromCatalogPools(1, pools, random);
 
   return {
-    dayKey,
-    generatedAt,
-    selectedPackId: 1,
-    packs,
+    lastGeneratedAt: generatedAt,
+    nextPackId: 2,
+    selectedPackId: firstPack.id,
+    packs: [firstPack],
   };
+};
+
+export const replenishDailyPackSession = (
+  session: DailyPackSession,
+  entries: GifCatalogEntry[],
+  { now = Date.now(), random = Math.random }: ReplenishDailyPackSessionOptions = {},
+): DailyPackSession => {
+  const elapsedGenerationCount = getElapsedGenerationCount(session.lastGeneratedAt, now);
+  if (elapsedGenerationCount === 0) {
+    return session;
+  }
+
+  const pools = createCatalogPools(entries);
+  const existingPacks = keepRecentOpenedPacks(session.packs);
+  const availableSlots = Math.max(0, DAILY_PACK_COUNT - countSealedPacks(existingPacks));
+  const packsToGenerate = Math.min(elapsedGenerationCount, availableSlots);
+  const nextPacks = existingPacks.slice();
+
+  for (let index = 0; index < packsToGenerate; index += 1) {
+    nextPacks.push(createPackFromCatalogPools(session.nextPackId + index, pools, random));
+  }
+
+  const trimmedPacks = keepRecentOpenedPacks(nextPacks);
+
+  return {
+    lastGeneratedAt: session.lastGeneratedAt + elapsedGenerationCount * PACK_GENERATION_INTERVAL_MS,
+    nextPackId: session.nextPackId + packsToGenerate,
+    selectedPackId: resolveSelectedPackId(trimmedPacks, session.selectedPackId),
+    packs: trimmedPacks,
+  };
+};
+
+export const getNextPackGenerationTime = (session: DailyPackSession | null): number | null => {
+  if (!session) {
+    return null;
+  }
+
+  return session.lastGeneratedAt + PACK_GENERATION_INTERVAL_MS;
 };
 
 export const isDailyPackSessionValid = (session: unknown): session is DailyPackSession => {
@@ -141,25 +199,25 @@ export const isDailyPackSessionValid = (session: unknown): session is DailyPackS
   const candidate = session as DailyPackSession;
 
   if (
-    typeof candidate.dayKey !== "string" ||
-    !Number.isFinite(candidate.generatedAt) ||
-    !isIntegerInRange(candidate.selectedPackId, 1, DAILY_PACK_COUNT) ||
+    !Number.isFinite(candidate.lastGeneratedAt) ||
+    !isIntegerAtLeast(candidate.nextPackId, 1) ||
+    !isIntegerAtLeast(candidate.selectedPackId, 1) ||
     !Array.isArray(candidate.packs) ||
-    candidate.packs.length !== DAILY_PACK_COUNT
+    candidate.packs.length === 0
   ) {
     return false;
   }
 
-  const seenNumbers = new Set<number>();
+  const seenIds = new Set<number>();
+  let maxPackId = 0;
 
-  for (let index = 0; index < candidate.packs.length; index += 1) {
-    const pack = candidate.packs[index];
-    const expectedPackId = index + 1;
-
+  for (const pack of candidate.packs) {
     if (
       !pack ||
       typeof pack !== "object" ||
-      pack.id !== expectedPackId ||
+      !isIntegerAtLeast(pack.id, 1) ||
+      seenIds.has(pack.id) ||
+      (pack.variant !== "standard" && pack.variant !== "gold") ||
       !Array.isArray(pack.gifNumbers) ||
       pack.gifNumbers.length !== GIFS_PER_DAILY_PACK ||
       (pack.status !== "sealed" && pack.status !== "opened")
@@ -167,19 +225,16 @@ export const isDailyPackSessionValid = (session: unknown): session is DailyPackS
       return false;
     }
 
+    seenIds.add(pack.id);
+    maxPackId = Math.max(maxPackId, pack.id);
+
     const packNumbers = new Set<number>();
     for (const number of pack.gifNumbers) {
-      if (
-        !Number.isInteger(number) ||
-        number < 1 ||
-        packNumbers.has(number) ||
-        seenNumbers.has(number)
-      ) {
+      if (!isIntegerAtLeast(number, 1) || packNumbers.has(number)) {
         return false;
       }
 
       packNumbers.add(number);
-      seenNumbers.add(number);
     }
 
     if (pack.status === "sealed") {
@@ -203,8 +258,7 @@ export const isDailyPackSessionValid = (session: unknown): session is DailyPackS
         !reveal ||
         typeof reveal !== "object" ||
         reveal.number !== pack.gifNumbers[revealIndex] ||
-        !Number.isInteger(reveal.count) ||
-        reveal.count < 1 ||
+        !isIntegerAtLeast(reveal.count, 1) ||
         typeof reveal.isNew !== "boolean"
       ) {
         return false;
@@ -212,7 +266,7 @@ export const isDailyPackSessionValid = (session: unknown): session is DailyPackS
     }
   }
 
-  return seenNumbers.size === DAILY_GIFS_TOTAL;
+  return candidate.nextPackId > maxPackId && seenIds.has(candidate.selectedPackId);
 };
 
 export const countRemainingDailyPacks = (session: DailyPackSession | null): number => {
@@ -220,5 +274,5 @@ export const countRemainingDailyPacks = (session: DailyPackSession | null): numb
     return 0;
   }
 
-  return session.packs.filter((pack) => pack.status === "sealed").length;
+  return countSealedPacks(session.packs);
 };

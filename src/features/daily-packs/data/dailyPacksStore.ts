@@ -4,15 +4,10 @@ import type { GifCatalogEntry } from "../../catalog/domain";
 import {
   countRemainingDailyPacks,
   createDailyPackSession,
-  getLocalDayKey,
   isDailyPackSessionValid,
+  replenishDailyPackSession,
 } from "../application/dailyPackSession";
-import {
-  DAILY_PACK_COUNT,
-  GIFS_PER_DAILY_PACK,
-  type DailyPackRevealResult,
-  type DailyPackSession,
-} from "../domain";
+import { GIFS_PER_DAILY_PACK, type DailyPackRevealResult, type DailyPackSession } from "../domain";
 
 type DailyPacksState = {
   hasHydrated: boolean;
@@ -27,8 +22,7 @@ type DailyPacksState = {
 
 const STORAGE_KEY = "stupid-vite-collect-daily-packs";
 
-const isPackId = (value: number): boolean =>
-  Number.isInteger(value) && value >= 1 && value <= DAILY_PACK_COUNT;
+const isPackId = (value: number): boolean => Number.isInteger(value) && value >= 1;
 
 export const useDailyPacksStore = create<DailyPacksState>()(
   persist(
@@ -43,23 +37,22 @@ export const useDailyPacksStore = create<DailyPacksState>()(
           return get().session;
         }
 
-        const dayKey = getLocalDayKey(now);
         const currentSession = get().session;
+        const nowTimestamp = now.getTime();
 
-        if (
-          currentSession &&
-          currentSession.dayKey === dayKey &&
-          isDailyPackSessionValid(currentSession)
-        ) {
-          return currentSession;
+        const nextSession =
+          currentSession && isDailyPackSessionValid(currentSession)
+            ? replenishDailyPackSession(currentSession, entries, {
+                now: nowTimestamp,
+              })
+            : createDailyPackSession(entries, {
+                generatedAt: nowTimestamp,
+              });
+
+        if (nextSession !== currentSession) {
+          set({ session: nextSession });
         }
 
-        const nextSession = createDailyPackSession(entries, {
-          dayKey,
-          generatedAt: now.getTime(),
-        });
-
-        set({ session: nextSession });
         return nextSession;
       },
       openPack: (packId, revealResults) => {
@@ -69,6 +62,11 @@ export const useDailyPacksStore = create<DailyPacksState>()(
 
         set((state) => {
           if (!state.session) {
+            return state;
+          }
+
+          const packExists = state.session.packs.some((pack) => pack.id === packId);
+          if (!packExists) {
             return state;
           }
 
@@ -93,10 +91,14 @@ export const useDailyPacksStore = create<DailyPacksState>()(
             };
           });
 
+          const nextSelectedPack =
+            nextPacks.find((pack) => pack.status === "sealed") ??
+            nextPacks.find((pack) => pack.id === packId);
+
           return {
             session: {
               ...state.session,
-              selectedPackId: packId,
+              selectedPackId: nextSelectedPack?.id ?? state.session.selectedPackId,
               packs: nextPacks,
             },
           };
@@ -109,6 +111,11 @@ export const useDailyPacksStore = create<DailyPacksState>()(
 
         set((state) => {
           if (!state.session || state.session.selectedPackId === packId) {
+            return state;
+          }
+
+          const packExists = state.session.packs.some((pack) => pack.id === packId);
+          if (!packExists) {
             return state;
           }
 
@@ -134,7 +141,7 @@ export const useDailyPacksStore = create<DailyPacksState>()(
       partialize: (state) => ({
         session: state.session,
       }),
-      version: 1,
+      version: 2,
       migrate: (persistedState) => {
         const state = persistedState as {
           session?: unknown;

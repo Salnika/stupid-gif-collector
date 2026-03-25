@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { GifCatalogEntry } from "../../../../src/features/catalog/domain";
-import { DAILY_GOLD_PACK_ID } from "../../../../src/features/daily-packs/domain";
 import {
   createDailyPackSession,
-  getLocalDayKey,
+  getNextPackGenerationTime,
   isDailyPackSessionValid,
+  replenishDailyPackSession,
 } from "../../../../src/features/daily-packs/application/dailyPackSession";
+import { PACK_GENERATION_INTERVAL_MS } from "../../../../src/features/daily-packs/domain";
 
 const createCatalog = (size: number): GifCatalogEntry[] =>
   Array.from({ length: size }, (_, index) => ({
@@ -20,54 +21,80 @@ const createCatalog = (size: number): GifCatalogEntry[] =>
   }));
 
 describe("dailyPackSession", () => {
-  it("creates 10 packs of 5 unique GIFs for the current day", () => {
+  it("creates an initial session with one sealed pack", () => {
     const session = createDailyPackSession(createCatalog(60), {
-      dayKey: "2026-03-23",
       generatedAt: 123,
-      random: () => 0.314,
+      random: () => 0.5,
     });
 
-    expect(session.dayKey).toBe("2026-03-23");
+    expect(session.lastGeneratedAt).toBe(123);
+    expect(session.nextPackId).toBe(2);
     expect(session.selectedPackId).toBe(1);
-    expect(session.packs).toHaveLength(10);
-    expect(session.packs.every((pack) => pack.gifNumbers.length === 5)).toBe(true);
-    expect(session.packs.flatMap((pack) => pack.gifNumbers)).toHaveLength(50);
-    expect(new Set(session.packs.flatMap((pack) => pack.gifNumbers)).size).toBe(50);
+    expect(session.packs).toHaveLength(1);
+    expect(session.packs[0]).toMatchObject({
+      id: 1,
+      variant: "standard",
+      status: "sealed",
+    });
+    expect(session.packs[0].gifNumbers).toHaveLength(5);
+    expect(new Set(session.packs[0].gifNumbers).size).toBe(5);
     expect(isDailyPackSessionValid(session)).toBe(true);
   });
 
-  it("reserves pack 10 as a premium-only gold pack", () => {
+  it("adds one pack every five minutes and caps unopened packs at ten", () => {
+    const start = Date.UTC(2026, 2, 23, 8, 0, 0);
+    const session = createDailyPackSession(createCatalog(60), {
+      generatedAt: start,
+      random: () => 0.5,
+    });
+
+    const replenished = replenishDailyPackSession(session, createCatalog(60), {
+      now: start + PACK_GENERATION_INTERVAL_MS * 12,
+      random: () => 0.5,
+    });
+
+    expect(replenished.packs).toHaveLength(10);
+    expect(replenished.packs.every((pack) => pack.status === "sealed")).toBe(true);
+    expect(replenished.nextPackId).toBe(11);
+    expect(replenished.lastGeneratedAt).toBe(start + PACK_GENERATION_INTERVAL_MS * 12);
+    expect(isDailyPackSessionValid(replenished)).toBe(true);
+  });
+
+  it("rolls a gold pack when the 1-in-20 chance succeeds", () => {
     const catalog = createCatalog(60);
     const entryByNumber = Object.fromEntries(catalog.map((entry) => [entry.number, entry]));
     const session = createDailyPackSession(catalog, {
-      dayKey: "2026-03-23",
       generatedAt: 123,
-      random: () => 0.314,
+      random: () => 0,
     });
 
-    const goldPack = session.packs[DAILY_GOLD_PACK_ID - 1];
-
-    expect(goldPack.id).toBe(DAILY_GOLD_PACK_ID);
+    expect(session.packs[0].variant).toBe("gold");
     expect(
-      goldPack.gifNumbers.every((number) => {
+      session.packs[0].gifNumbers.every((number) => {
         const rarity = entryByNumber[number]?.rarity;
         return rarity === "rare" || rarity === "epic" || rarity === "legendary";
       }),
     ).toBe(true);
   });
 
-  it("returns the browser-local day key", () => {
-    expect(getLocalDayKey(new Date(2026, 2, 23, 23, 59, 0))).toBe("2026-03-23");
-  });
-
-  it("rejects invalid sessions with repeated GIF numbers", () => {
+  it("computes the next generation time from the last refresh", () => {
     const session = createDailyPackSession(createCatalog(60), {
-      dayKey: "2026-03-23",
-      generatedAt: 123,
-      random: () => 0.25,
+      generatedAt: 500,
+      random: () => 0.5,
     });
 
-    session.packs[1].gifNumbers[0] = session.packs[0].gifNumbers[0];
+    expect(getNextPackGenerationTime(session)).toBe(500 + PACK_GENERATION_INTERVAL_MS);
+  });
+
+  it("rejects invalid sessions with repeated pack ids", () => {
+    const session = createDailyPackSession(createCatalog(60), {
+      generatedAt: 123,
+      random: () => 0.5,
+    });
+
+    session.packs.push({
+      ...session.packs[0],
+    });
 
     expect(isDailyPackSessionValid(session)).toBe(false);
   });

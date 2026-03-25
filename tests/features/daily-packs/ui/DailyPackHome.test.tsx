@@ -6,6 +6,7 @@ import type { GifCatalogEntry } from "../../../../src/features/catalog/domain";
 import { useUnlockedGifsStore } from "../../../../src/features/collection/data/unlockedGifsStore";
 import { useDailyPacksStore } from "../../../../src/features/daily-packs/data/dailyPacksStore";
 import { DailyPackHome } from "../../../../src/features/daily-packs/ui/DailyPackHome";
+import { PACK_GENERATION_INTERVAL_MS } from "../../../../src/features/daily-packs/domain";
 
 vi.mock("../../../../src/hooks/useLenisInfiniteScroll", () => ({
   useLenisInfiniteScroll: () => undefined,
@@ -48,6 +49,7 @@ const createResponse = (payload: unknown): Response =>
 describe("DailyPackHome", () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
     resetCatalogRepositoryCache();
     localStorage.clear();
     useDailyPacksStore.getState().resetForTests();
@@ -63,7 +65,7 @@ describe("DailyPackHome", () => {
     vi.useRealTimers();
   });
 
-  it("opens the active pack and adds five GIFs to the collection", async () => {
+  it("opens the active pack and lets the user favorite a revealed reward", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(createResponse(createManifest(60)));
 
     render(
@@ -72,12 +74,12 @@ describe("DailyPackHome", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("button", { name: /open this pack/i })).toBeTruthy();
-
+    expect(await screen.findByRole("button", { name: /select sealed pack 1/i })).toBeTruthy();
+    expect(screen.queryByText(/next pack in \d+:\d{2}/i)).toBeNull();
     vi.useFakeTimers();
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /open this pack/i }));
+      fireEvent.click(screen.getByRole("button", { name: /select sealed pack 1/i }));
     });
 
     expect(screen.getByRole("heading", { name: /pack 1 ready to open/i })).toBeTruthy();
@@ -96,11 +98,12 @@ describe("DailyPackHome", () => {
     expect(screen.getByRole("heading", { name: /pack 1 opened/i })).toBeTruthy();
     expect(screen.getAllByRole("img", { name: /reward gif #/i })).toHaveLength(5);
     expect(Object.keys(useUnlockedGifsStore.getState().unlockedByNumber)).toHaveLength(5);
-    expect(screen.getByText(/9 packs left today/i)).toBeTruthy();
 
     const [firstRewardButton] = screen.getAllByRole("button", { name: /open reward gif #/i });
     const rewardLabel =
       firstRewardButton.getAttribute("aria-label")?.replace(/^Open /i, "") ?? "Reward GIF";
+    const rewardMatch = rewardLabel.match(/#(\d+)/i);
+    const rewardNumber = rewardMatch ? Number.parseInt(rewardMatch[1], 10) : NaN;
 
     await act(async () => {
       fireEvent.click(firstRewardButton);
@@ -110,6 +113,12 @@ describe("DailyPackHome", () => {
     expect(rewardDialog).toBeTruthy();
 
     await act(async () => {
+      fireEvent.click(within(rewardDialog).getByRole("button", { name: /add to favorites/i }));
+    });
+
+    expect(useUnlockedGifsStore.getState().favoriteByNumber[rewardNumber]).toBe(true);
+
+    await act(async () => {
       fireEvent.click(within(rewardDialog).getByRole("button", { name: /^close$/i }));
     });
 
@@ -117,14 +126,39 @@ describe("DailyPackHome", () => {
       fireEvent.click(screen.getByRole("button", { name: /back to packs/i }));
     });
 
-    // After closing the dialog, the opened pack is removed from the carousel
-    // and the next sealed pack becomes active
-    expect(screen.getByRole("button", { name: /open this pack/i })).toBeTruthy();
-    expect(screen.getByText(/9 packs left today/i)).toBeTruthy();
+    expect(screen.getByText(/next pack in/i)).toBeTruthy();
+    expect(screen.getByText(/\d+:\d{2}/i)).toBeTruthy();
+  });
+
+  it("adds a new pack to the queue after five minutes", async () => {
+    const manifest = createManifest(60);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(createResponse(manifest));
+
+    render(
+      <MemoryRouter>
+        <DailyPackHome />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("button", { name: /select sealed pack 1/i })).toBeTruthy();
+    expect(screen.queryByText(/next pack in/i)).toBeNull();
+
+    await act(async () => {
+      const session = useDailyPacksStore.getState().session;
+      useDailyPacksStore
+        .getState()
+        .ensureTodaySession(
+          Object.values(manifest.byNumber),
+          new Date((session?.lastGeneratedAt ?? Date.now()) + PACK_GENERATION_INTERVAL_MS),
+        );
+    });
+
+    expect(screen.getByRole("button", { name: /select sealed pack 2/i })).toBeTruthy();
   });
 
   it("scrolls the carousel when wheeling over the interactive controls", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(createResponse(createManifest(60)));
+    const manifest = createManifest(60);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(createResponse(manifest));
 
     render(
       <MemoryRouter>
@@ -132,32 +166,27 @@ describe("DailyPackHome", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("button", { name: /open this pack/i })).toBeTruthy();
-    expect(screen.getByText(/pack 1 is still sealed/i)).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /select sealed pack 1/i })).toBeTruthy();
 
     await act(async () => {
-      fireEvent.wheel(screen.getByRole("button", { name: /open this pack/i }), { deltaY: 400 });
+      const session = useDailyPacksStore.getState().session;
+      useDailyPacksStore
+        .getState()
+        .ensureTodaySession(
+          Object.values(manifest.byNumber),
+          new Date((session?.lastGeneratedAt ?? Date.now()) + PACK_GENERATION_INTERVAL_MS),
+        );
     });
 
-    expect(screen.getByText(/pack 2 is still sealed/i)).toBeTruthy();
-  });
+    const packOneButton = screen.getByRole("button", { name: /select sealed pack 1/i });
+    const packTwoButton = screen.getByRole("button", { name: /select sealed pack 2/i });
 
-  it("labels pack 10 as the gold pack", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(createResponse(createManifest(60)));
-
-    render(
-      <MemoryRouter>
-        <DailyPackHome />
-      </MemoryRouter>,
-    );
-
-    expect(await screen.findByRole("button", { name: /open this pack/i })).toBeTruthy();
+    expect(packOneButton.getAttribute("aria-current")).toBe("true");
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /select sealed gold pack 10/i }));
+      fireEvent.wheel(packOneButton, { deltaY: 400 });
     });
 
-    expect(screen.getByText(/gold pack 10 is still sealed/i)).toBeTruthy();
-    expect(screen.getByText(/gold drop/i)).toBeTruthy();
+    expect(packTwoButton.getAttribute("aria-current")).toBe("true");
   });
 });

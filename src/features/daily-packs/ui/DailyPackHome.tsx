@@ -23,12 +23,12 @@ import {
   useLenisInfiniteScroll,
   type InfiniteScrollUpdate,
 } from "../../../hooks/useLenisInfiniteScroll";
-import { actionButton } from "../../../shared/styles/recipes.css";
+import { getNextPackGenerationTime } from "../application/dailyPackSession";
 import { loadManifest } from "../../catalog/data";
 import type { GifCatalogEntry } from "../../catalog/domain";
 import { useUnlockedGifsStore } from "../../collection/data/unlockedGifsStore";
 import { useDailyPacksStore } from "../data/dailyPacksStore";
-import { isGoldDailyPackId, type DailyPack } from "../domain";
+import { DAILY_PACK_COUNT, isGoldDailyPack, type DailyPack } from "../domain";
 import { DailyPackOpeningDialog } from "./DailyPackOpeningDialog";
 import * as styles from "./dailyPacks.css";
 
@@ -38,17 +38,6 @@ const LOADER_ANCHOR = { x: 1125, y: 425 };
 const PACK_ARTWORKS = [pack1, pack2, pack3, pack4, pack5];
 const ORBIT_RADIUS_X = 260;
 const ORBIT_RADIUS_Y = 176;
-
-const formatDayLabel = (dayKey: string): string => {
-  const [year, month, day] = dayKey.split("-").map((value) => Number.parseInt(value, 10));
-  const date = new Date(year, (month || 1) - 1, day || 1);
-
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  }).format(date);
-};
 
 const toSealedIndex = (turnIndex: number, sealedCount: number): number => {
   if (sealedCount === 0) return 0;
@@ -74,11 +63,19 @@ const getSealedPackOffset = (
   return delta;
 };
 
-const getPackArtwork = (packId: number): string =>
-  isGoldDailyPackId(packId) ? goldPack : PACK_ARTWORKS[(packId - 1) % PACK_ARTWORKS.length];
+const getPackArtwork = (pack: DailyPack): string =>
+  isGoldDailyPack(pack) ? goldPack : PACK_ARTWORKS[(pack.id - 1) % PACK_ARTWORKS.length];
 
-const getPackDisplayName = (packId: number): string =>
-  isGoldDailyPackId(packId) ? `Gold Pack ${packId}` : `Pack ${packId}`;
+const getPackDisplayName = (pack: DailyPack): string =>
+  isGoldDailyPack(pack) ? `Gold Pack ${pack.id}` : `Pack ${pack.id}`;
+
+const formatCountdown = (timeRemainingMs: number): string => {
+  const totalSeconds = Math.max(0, Math.ceil(timeRemainingMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${minutes}:${`${seconds}`.padStart(2, "0")}`;
+};
 
 type PackMaskStyle = CSSProperties & {
   "--pack-mask": string;
@@ -124,6 +121,7 @@ export function DailyPackHome() {
 
   const [catalogEntries, setCatalogEntries] = useState<GifCatalogEntry[]>([]);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [virtualTurns, setVirtualTurns] = useState(0);
   const [dialogState, setDialogState] = useState<{
     packId: number;
@@ -147,6 +145,10 @@ export function DailyPackHome() {
   );
 
   const sealedCount = sealedPacks.length;
+  const nextPackGenerationTime =
+    session && remainingPacks < DAILY_PACK_COUNT ? getNextPackGenerationTime(session) : null;
+  const nextPackCountdown =
+    nextPackGenerationTime === null ? null : formatCountdown(nextPackGenerationTime - currentTime);
 
   useEffect(() => {
     let cancelled = false;
@@ -195,11 +197,49 @@ export function DailyPackHome() {
   }, [catalogEntries, ensureTodaySession, hasHydrated]);
 
   useEffect(() => {
+    if (!hasHydrated || catalogEntries.length === 0 || !session) {
+      return;
+    }
+
+    const nextGenerationTime = getNextPackGenerationTime(session);
+    if (nextGenerationTime === null) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(
+      () => {
+        ensureTodaySession(catalogEntries, new Date());
+      },
+      Math.max(0, nextGenerationTime - Date.now()),
+    );
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [catalogEntries, ensureTodaySession, hasHydrated, session]);
+
+  useEffect(() => {
+    if (nextPackGenerationTime === null) {
+      return;
+    }
+
+    setCurrentTime(Date.now());
+
+    const intervalId = window.setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [nextPackGenerationTime]);
+
+  useEffect(() => {
     if (!session || sealedCount === 0) {
       return;
     }
 
-    const sessionKey = `${session.dayKey}:${session.generatedAt}`;
+    const sessionKey = `${session.lastGeneratedAt}:${session.nextPackId}:selected=${session.selectedPackId}`;
     const sealedKey = `${sessionKey}:sealed=${sealedCount}`;
     if (alignedSessionKeyRef.current === sealedKey) {
       return;
@@ -357,22 +397,11 @@ export function DailyPackHome() {
     session && sealedCount > 0
       ? (sealedPacks[selectedSealedIndexRef.current] ?? sealedPacks[0])
       : null;
-  const dialogPack = dialogState && session ? session.packs[dialogState.packId - 1] : null;
-  const dayLabel = session ? formatDayLabel(session.dayKey) : "Today";
-  const remainingLabel = session
-    ? `${remainingPacks} pack${remainingPacks > 1 ? "s" : ""} left today`
-    : "Loading packs...";
-
-  const packSummary = activePack
-    ? isGoldDailyPackId(activePack.id)
-      ? `Gold Pack ${activePack.id} is still sealed. Open it to reveal five rare, epic, or legendary GIFs and add them straight to your collection.`
-      : `Pack ${activePack.id} is still sealed. Open it to reveal five GIFs and add them straight to your collection.`
-    : "Preparing the daily run.";
-
-  const packHint =
-    remainingPacks > 0
-      ? "Choose a sealed pack, then open it to reveal five GIFs."
-      : "All ten packs are open today. Come back tomorrow for a new daily run!";
+  const dialogPack =
+    dialogState && session
+      ? (session.packs.find((candidate) => candidate.id === dialogState.packId) ?? null)
+      : null;
+  const queueLabel = "Rolling pack queue";
 
   return (
     <main className={styles.page}>
@@ -396,22 +425,11 @@ export function DailyPackHome() {
           <InfiniteLoader ref={loaderRef} />
         </div>
 
-        <div className={styles.topBar}>
-          <p className={styles.eyebrow}>Daily pack opening</p>
-          <h1 className={styles.title}>10 packs. 5 GIFs each.</h1>
-          <p className={styles.subtitle}>
-            {session
-              ? `Your browser keeps its own daily run. Today's drop is ready for ${dayLabel}.`
-              : "Your browser generates a fresh daily run and keeps it until local midnight."}
-          </p>
-          <div className={styles.remainingPill}>{remainingLabel}</div>
-        </div>
-
         {!hasHydrated || (catalogEntries.length === 0 && !catalogError) ? (
           <div className={styles.stateCard}>
-            <h2 className={styles.stateTitle}>Loading today&apos;s packs</h2>
+            <h2 className={styles.stateTitle}>Loading pack queue</h2>
             <p className={styles.stateText}>
-              The catalog is loading and your daily session is being restored.
+              The catalog is loading and your rolling pack queue is being restored.
             </p>
           </div>
         ) : null}
@@ -429,7 +447,7 @@ export function DailyPackHome() {
               {sealedPacks.map((pack, sealedIndex) => {
                 const offset = getSealedPackOffset(sealedIndex, virtualTurns, sealedCount);
                 const isActive = activePack ? pack.id === activePack.id : false;
-                const packArtwork = getPackArtwork(pack.id);
+                const packArtwork = getPackArtwork(pack);
                 const orbitState = getPackOrbitState(offset, sealedCount);
 
                 return (
@@ -439,7 +457,7 @@ export function DailyPackHome() {
                     className={styles.packButton}
                     data-status={pack.status}
                     aria-current={isActive}
-                    aria-label={`Select sealed ${getPackDisplayName(pack.id)}`}
+                    aria-label={`Select sealed ${getPackDisplayName(pack)}`}
                     onClick={() => handlePackActivate(pack.id)}
                     style={{
                       transform: orbitState.transform,
@@ -462,65 +480,27 @@ export function DailyPackHome() {
                       </div>
 
                       <div className={styles.packFooter}>
-                        <span className={styles.packBadge}>{getPackDisplayName(pack.id)}</span>
-                        <span className={styles.packStatus}>
-                          {isGoldDailyPackId(pack.id)
-                            ? "Gold drop"
-                            : isActive
-                              ? "Centered now"
-                              : "Sealed"}
-                        </span>
+                        <span className={styles.packBadge}>{getPackDisplayName(pack)}</span>
                       </div>
                     </div>
                   </button>
                 );
               })}
             </div>
-
-            {activePack ? (
-              <div className={styles.currentPackPanel} onWheelCapture={handleCarouselWheel}>
-                <p className={styles.currentPackSummary}>{packSummary}</p>
-                <div className={styles.currentPackActions}>
-                  <button
-                    type="button"
-                    className={actionButton({ tone: "primary" })}
-                    onClick={() => handleOpenPackDialog(activePack)}
-                  >
-                    Open this pack
-                  </button>
-                  <button
-                    type="button"
-                    className={actionButton({ tone: "secondary" })}
-                    onClick={() => navigate("/my-collection")}
-                  >
-                    My collection
-                  </button>
-                </div>
-              </div>
-            ) : null}
           </>
         ) : session && sealedCount === 0 ? (
-          <div className={styles.stateCard}>
-            <h2 className={styles.stateTitle}>All packs opened!</h2>
-            <p className={styles.stateText}>{packHint}</p>
-            <div className={styles.currentPackActions}>
-              <button
-                type="button"
-                className={actionButton({ tone: "secondary" })}
-                onClick={() => navigate("/my-collection")}
-              >
-                My collection
-              </button>
-            </div>
+          <div className={styles.emptyCountdown}>
+            <p className={styles.emptyCountdownLabel}>Next pack in</p>
+            <p className={styles.emptyCountdownValue}>{nextPackCountdown ?? "0:00"}</p>
           </div>
         ) : null}
       </div>
 
       {dialogPack ? (
         <DailyPackOpeningDialog
-          dayLabel={dayLabel}
+          dayLabel={queueLabel}
           pack={dialogPack}
-          packArtwork={getPackArtwork(dialogPack.id)}
+          packArtwork={getPackArtwork(dialogPack)}
           entriesByNumber={entryByNumberRef.current}
           animateOnOpen={dialogState?.phase === "opening"}
           remainingPacks={remainingPacks}

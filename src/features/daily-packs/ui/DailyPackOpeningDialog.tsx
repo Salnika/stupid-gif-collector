@@ -10,7 +10,8 @@ import { clearBrowserTimeout } from "../../../shared/lib/browser";
 import { actionButton, rarityBorder } from "../../../shared/styles/recipes.css";
 import { RarityBadge } from "../../../shared/ui";
 import type { GifCatalogEntry } from "../../catalog/domain";
-import { isGoldDailyPackId, type DailyPack } from "../domain";
+import { useUnlockedGifsStore } from "../../collection/data/unlockedGifsStore";
+import { isGoldDailyPack, type DailyPack } from "../domain";
 import * as styles from "./dailyPacks.css";
 
 type DailyPackOpeningDialogProps = {
@@ -129,6 +130,8 @@ export function DailyPackOpeningDialog({
   const revealTimerRef = useRef<number | null>(null);
   const [isRevealed, setIsRevealed] = useState(!animateOnOpen && pack.status === "opened");
   const [selectedReward, setSelectedReward] = useState<PackReward | null>(null);
+  const favoriteByNumber = useUnlockedGifsStore((state) => state.favoriteByNumber);
+  const toggleFavorite = useUnlockedGifsStore((state) => state.toggleFavorite);
 
   useEffect(() => {
     setIsRevealed(!animateOnOpen && pack.status === "opened");
@@ -205,9 +208,9 @@ export function DailyPackOpeningDialog({
 
   const hintText =
     remainingPacks > 0
-      ? `${remainingPacks} pack${remainingPacks > 1 ? "s" : ""} still sealed today.`
-      : "All daily packs are open. Come back after midnight for a fresh run.";
-  const packDisplayName = isGoldDailyPackId(pack.id) ? `Gold Pack ${pack.id}` : `Pack ${pack.id}`;
+      ? `${remainingPacks} pack${remainingPacks > 1 ? "s" : ""} still sealed in the queue.`
+      : "No unopened packs are waiting right now. A new pack appears every five minutes.";
+  const packDisplayName = isGoldDailyPack(pack) ? `Gold Pack ${pack.id}` : `Pack ${pack.id}`;
 
   const title = isReadyToOpen
     ? `${packDisplayName} ready to open`
@@ -233,7 +236,7 @@ export function DailyPackOpeningDialog({
             <h2 className={styles.dialogTitle}>{title}</h2>
             <p className={styles.dialogMeta}>
               {isReadyToOpen
-                ? isGoldDailyPackId(pack.id)
+                ? isGoldDailyPack(pack)
                   ? "Click the gold pack to tear it open. It only contains rare, epic, and legendary GIFs, and rewards are only granted once from this screen."
                   : "Click the pack to tear it open. Rewards are only granted once you open it from this screen."
                 : animateOnOpen
@@ -399,13 +402,25 @@ export function DailyPackOpeningDialog({
               />
             </div>
 
-            <button
-              type="button"
-              className={actionButton({ tone: "secondary" })}
-              onClick={() => setSelectedReward(null)}
-            >
-              Close
-            </button>
+            <div className={styles.dialogActionGroup}>
+              <button
+                type="button"
+                className={actionButton({ tone: "primary" })}
+                onClick={() => toggleFavorite(selectedReward.entry.number)}
+              >
+                {favoriteByNumber[selectedReward.entry.number]
+                  ? "Remove from favorites"
+                  : "Add to favorites"}
+              </button>
+
+              <button
+                type="button"
+                className={actionButton({ tone: "secondary" })}
+                onClick={() => setSelectedReward(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

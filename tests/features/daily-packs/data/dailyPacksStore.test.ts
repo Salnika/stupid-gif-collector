@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { GifCatalogEntry } from "../../../../src/features/catalog/domain";
 import { useDailyPacksStore } from "../../../../src/features/daily-packs/data/dailyPacksStore";
+import { PACK_GENERATION_INTERVAL_MS } from "../../../../src/features/daily-packs/domain";
 
 const createCatalog = (size: number): GifCatalogEntry[] =>
   Array.from({ length: size }, (_, index) => ({
@@ -16,32 +17,71 @@ const createCatalog = (size: number): GifCatalogEntry[] =>
 
 describe("dailyPacksStore", () => {
   beforeEach(async () => {
+    vi.restoreAllMocks();
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
     localStorage.clear();
     useDailyPacksStore.getState().resetForTests();
     await Promise.resolve(useDailyPacksStore.persist.clearStorage());
   });
 
-  it("reuses the same session during the same day and regenerates on the next day", () => {
+  it("replenishes the local queue every five minutes and caps unopened packs at ten", () => {
     const catalog = createCatalog(60);
-    const morning = new Date(2026, 2, 23, 8, 0, 0);
+    const start = new Date(2026, 2, 23, 8, 0, 0);
 
-    const firstSession = useDailyPacksStore.getState().ensureTodaySession(catalog, morning);
-    useDailyPacksStore.getState().selectPack(4);
-
-    const sameDaySession = useDailyPacksStore
+    const firstSession = useDailyPacksStore.getState().ensureTodaySession(catalog, start);
+    const fourMinutesLater = useDailyPacksStore
       .getState()
-      .ensureTodaySession(catalog, new Date(2026, 2, 23, 20, 30, 0));
-
-    expect(sameDaySession?.generatedAt).toBe(firstSession?.generatedAt);
-    expect(useDailyPacksStore.getState().session?.selectedPackId).toBe(4);
-
-    const nextDaySession = useDailyPacksStore
+      .ensureTodaySession(catalog, new Date(start.getTime() + PACK_GENERATION_INTERVAL_MS - 1));
+    const fiveMinutesLater = useDailyPacksStore
       .getState()
-      .ensureTodaySession(catalog, new Date(2026, 2, 24, 0, 1, 0));
+      .ensureTodaySession(catalog, new Date(start.getTime() + PACK_GENERATION_INTERVAL_MS));
+    const oneHourLater = useDailyPacksStore
+      .getState()
+      .ensureTodaySession(catalog, new Date(start.getTime() + PACK_GENERATION_INTERVAL_MS * 12));
 
-    expect(nextDaySession?.dayKey).toBe("2026-03-24");
-    expect(nextDaySession?.generatedAt).not.toBe(firstSession?.generatedAt);
-    expect(nextDaySession?.selectedPackId).toBe(1);
+    expect(firstSession?.packs).toHaveLength(1);
+    expect(fourMinutesLater?.packs).toHaveLength(1);
+    expect(fiveMinutesLater?.packs).toHaveLength(2);
+    expect(oneHourLater?.packs.filter((pack) => pack.status === "sealed")).toHaveLength(10);
+    expect(oneHourLater?.nextPackId).toBe(11);
+  });
+
+  it("does not bank extra packs while the queue is already full", () => {
+    const catalog = createCatalog(60);
+    const start = new Date(2026, 2, 23, 8, 0, 0);
+
+    useDailyPacksStore.getState().ensureTodaySession(catalog, start);
+    useDailyPacksStore
+      .getState()
+      .ensureTodaySession(catalog, new Date(start.getTime() + PACK_GENERATION_INTERVAL_MS * 12));
+
+    const fullQueueSession = useDailyPacksStore.getState().session;
+    expect(fullQueueSession?.packs.filter((pack) => pack.status === "sealed")).toHaveLength(10);
+
+    const firstPack = fullQueueSession?.packs.find((pack) => pack.id === 1);
+    expect(firstPack).toBeDefined();
+
+    const revealResults =
+      firstPack?.gifNumbers.map((number, index) => ({
+        number,
+        count: index + 1,
+        isNew: index % 2 === 0,
+      })) ?? [];
+
+    useDailyPacksStore.getState().openPack(1, revealResults);
+
+    const oneMinuteLater = useDailyPacksStore
+      .getState()
+      .ensureTodaySession(
+        catalog,
+        new Date(start.getTime() + PACK_GENERATION_INTERVAL_MS * 12 + 60_000),
+      );
+    const fiveMinutesLater = useDailyPacksStore
+      .getState()
+      .ensureTodaySession(catalog, new Date(start.getTime() + PACK_GENERATION_INTERVAL_MS * 13));
+
+    expect(oneMinuteLater?.packs.filter((pack) => pack.status === "sealed")).toHaveLength(9);
+    expect(fiveMinutesLater?.packs.filter((pack) => pack.status === "sealed")).toHaveLength(10);
   });
 
   it("opens a pack only once and restores persisted state after rehydration", async () => {
@@ -61,13 +101,13 @@ describe("dailyPacksStore", () => {
         isNew: index % 2 === 0,
       })) ?? [];
 
-    useDailyPacksStore.getState().openPack(1, revealResults);
+    useDailyPacksStore.getState().openPack(firstPack?.id ?? 1, revealResults);
 
     expect(useDailyPacksStore.getState().session?.packs[0]).toMatchObject({
       status: "opened",
       revealResults,
     });
-    expect(useDailyPacksStore.getState().getRemainingPacks()).toBe(9);
+    expect(useDailyPacksStore.getState().getRemainingPacks()).toBe(0);
 
     const persistedSnapshot = localStorage.getItem("stupid-vite-collect-daily-packs");
     useDailyPacksStore.setState({ hasHydrated: false, session: null });
@@ -83,7 +123,7 @@ describe("dailyPacksStore", () => {
     });
 
     useDailyPacksStore.getState().openPack(
-      1,
+      firstPack?.id ?? 1,
       revealResults.map((reveal) => ({
         ...reveal,
         count: reveal.count + 10,

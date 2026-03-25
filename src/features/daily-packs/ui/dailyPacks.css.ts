@@ -294,6 +294,23 @@ export const remainingPill = style({
   backdropFilter: "blur(12px)",
 });
 
+export const countdownPill = style({
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: "1.9rem",
+  padding: "0 0.8rem",
+  borderRadius: vars.radius.pill,
+  border: "1px solid rgba(154, 230, 180, 0.26)",
+  background: "rgba(11, 32, 20, 0.56)",
+  color: "rgba(220, 252, 231, 0.94)",
+  fontSize: "0.72rem",
+  letterSpacing: "0.11em",
+  textTransform: "uppercase",
+  backdropFilter: "blur(12px)",
+  boxShadow: "0 0 24px rgba(74, 222, 128, 0.12)",
+});
+
 export const carousel = style({
   position: "absolute",
   left: "50%",
@@ -552,6 +569,37 @@ export const stateText = style({
   margin: 0,
   lineHeight: 1.6,
   color: "rgba(235, 241, 255, 0.76)",
+});
+
+export const emptyCountdown = style({
+  position: "absolute",
+  left: "50%",
+  top: "50%",
+  transform: "translate(-50%, -50%)",
+  zIndex: 52,
+  display: "grid",
+  justifyItems: "center",
+  gap: vars.space.sm,
+  textAlign: "center",
+  pointerEvents: "none",
+});
+
+export const emptyCountdownLabel = style({
+  margin: 0,
+  fontSize: "0.82rem",
+  letterSpacing: "0.24em",
+  textTransform: "uppercase",
+  color: "rgba(226, 232, 240, 0.72)",
+});
+
+export const emptyCountdownValue = style({
+  margin: 0,
+  fontFamily: vars.font.display,
+  fontSize: "clamp(4.8rem, 15vw, 9.5rem)",
+  lineHeight: 0.92,
+  letterSpacing: "-0.04em",
+  color: "rgba(245, 251, 255, 0.98)",
+  textShadow: "0 0 24px rgba(186, 250, 195, 0.2), 0 0 56px rgba(190, 126, 255, 0.18)",
 });
 
 export const dialogBackdrop = style({
