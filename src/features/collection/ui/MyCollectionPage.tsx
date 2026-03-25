@@ -40,7 +40,7 @@ export function MyCollectionPageView() {
         ) : null}
 
         {viewModel.sortedUnlockedGifs.length === 0 ? (
-          <p className={styles.emptyState}>No unlocked GIFs yet. Scroll on the Home page to add some.</p>
+          <p className={styles.emptyState}>No unlocked GIFs yet. Open today&apos;s packs on the Home page to add some.</p>
         ) : viewModel.filteredUnlockedGifs.length === 0 ? (
           <p className={styles.emptyState}>No GIF matches the selected filters.</p>
         ) : (

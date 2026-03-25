@@ -70,6 +70,14 @@ export function useCoverAnchorPosition({
 
     updatePoint()
 
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updatePoint)
+
+      return () => {
+        window.removeEventListener('resize', updatePoint)
+      }
+    }
+
     const resizeObserver = new ResizeObserver(updatePoint)
     resizeObserver.observe(container)
 

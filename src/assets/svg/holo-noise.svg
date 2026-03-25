@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="holo-rainbow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff4fb6" stop-opacity="0.22"/>
+      <stop offset="35%" stop-color="#3de3ff" stop-opacity="0.2"/>
+      <stop offset="68%" stop-color="#ffe97b" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#b884ff" stop-opacity="0.24"/>
+    </linearGradient>
+
+    <pattern id="holo-lines-a" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
+      <rect width="2" height="10" fill="#ffffff" fill-opacity="0.16"/>
+    </pattern>
+
+    <pattern id="holo-lines-b" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(-28)">
+      <rect width="1.5" height="14" fill="#ffffff" fill-opacity="0.08"/>
+    </pattern>
+
+    <filter id="holo-speckle" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="31" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.18"/>
+      </feComponentTransfer>
+    </filter>
+  </defs>
+
+  <rect width="256" height="256" fill="url(#holo-rainbow)"/>
+  <rect width="256" height="256" fill="url(#holo-lines-a)"/>
+  <rect width="256" height="256" fill="url(#holo-lines-b)"/>
+  <rect width="256" height="256" filter="url(#holo-speckle)"/>
+</svg>
