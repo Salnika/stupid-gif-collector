@@ -8,12 +8,12 @@ export type GifCatalogEntry = {
   rarity: GifRarity;
 };
 
-export type GifManifest = {
-  total: number;
-  byNumber: Record<number, GifCatalogEntry>;
-};
-
-export type GifIndex = {
+export type CatalogRuntime = {
   total: number;
   paths: string[];
+  rarityByCollectionFolder: Record<string, GifRarity>;
+};
+
+export type CatalogStats = {
+  total: number;
 };

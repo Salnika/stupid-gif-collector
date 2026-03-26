@@ -11,7 +11,6 @@ type CollectionFilterParams = {
 export const createCollectionEntries = (
   unlockedByNumber: Record<number, UnlockedGif>,
   favoriteByNumber: Record<number, true>,
-  rarityByNumber: Record<number, GifRarity>,
 ): CollectionGifEntry[] =>
   Object.values(unlockedByNumber)
     .map(
@@ -20,7 +19,7 @@ export const createCollectionEntries = (
         path: gif.path,
         name: gif.name,
         collection: gif.collection,
-        rarity: rarityByNumber[gif.number] ?? gif.rarity ?? DEFAULT_GIF_RARITY,
+        rarity: gif.rarity ?? DEFAULT_GIF_RARITY,
         unlockedAt: gif.unlockedAt,
         count: gif.count,
         isFavorite: Boolean(favoriteByNumber[gif.number]),

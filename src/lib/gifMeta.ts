@@ -2,6 +2,7 @@ export type GifMeta = {
   number: number;
   name: string;
   collection: string;
+  collectionFolder: string;
 };
 
 const EXTERNAL_URL_PATTERN = /^[a-z]+:\/\//i;
@@ -63,5 +64,6 @@ export const parseGifMeta = (assetPath: string, fallbackNumber: number): GifMeta
     number: Number.isFinite(number) && number > 0 ? number : fallbackNumber,
     name: rawName.replace(/[_-]+/g, " ").trim(),
     collection: collectionFolder.replace(/[_-]+/g, " ").trim(),
+    collectionFolder,
   };
 };

@@ -19,6 +19,8 @@ describe("GifCard", () => {
     expect(screen.getByText("Collection: test")).toBeTruthy();
     expect(screen.getByText("Legendary")).toBeTruthy();
     expect(screen.getByText("x2")).toBeTruthy();
+    expect(screen.getByAltText("GIF #12").getAttribute("loading")).toBe("lazy");
+    expect(screen.getByAltText("GIF #12").getAttribute("decoding")).toBe("async");
   });
 
   it("falls back to a plain article when refraction support is unavailable", () => {

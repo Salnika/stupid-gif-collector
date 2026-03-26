@@ -4,10 +4,9 @@ import path from "node:path";
 const PROJECT_ROOT = process.cwd();
 const PUBLIC_ROOT = path.join(PROJECT_ROOT, "public");
 const COLLECTIONS_ROOT = path.join(PUBLIC_ROOT, "collections");
-const INDEX_OUTPUT_FILE = path.join(PUBLIC_ROOT, "collections-index.json");
-const MANIFEST_OUTPUT_FILE = path.join(PUBLIC_ROOT, "collections-manifest.json");
+const RUNTIME_OUTPUT_FILE = path.join(PUBLIC_ROOT, "catalog-runtime.json");
+const STATS_OUTPUT_FILE = path.join(PUBLIC_ROOT, "catalog-stats.json");
 const PREFIX_PATTERN = /^(?:#)?(\d+)-(.*)$/i;
-const DEFAULT_RARITY = "common";
 
 const toCollectionRarity = (percentile) => {
   if (percentile >= 0.6) {
@@ -46,7 +45,6 @@ const walkFiles = async (directory) => {
 };
 
 const encodePathSegment = (segment) => encodeURIComponent(segment);
-const toDisplayText = (value) => value.replace(/[_-]+/g, " ").trim();
 
 const toPublicPath = (absolutePath) => {
   const relativePath = path.relative(PUBLIC_ROOT, absolutePath);
@@ -73,7 +71,6 @@ const buildIndex = async () => {
     }
 
     const encodedPath = toPublicPath(filePath);
-    const rawName = (match[2] ?? fileName).replace(/\.[^.]+$/, "");
     const collectionFolder = path.basename(path.dirname(filePath));
 
     if (indexedPaths[index - 1] !== undefined) {
@@ -83,9 +80,6 @@ const buildIndex = async () => {
     indexedPaths[index - 1] = encodedPath;
     parsedEntries.push({
       number: index,
-      path: encodedPath,
-      name: toDisplayText(rawName),
-      collection: toDisplayText(collectionFolder),
       collectionFolder,
     });
   }
@@ -103,23 +97,12 @@ const buildIndex = async () => {
     return a[0].localeCompare(b[0]);
   });
 
-  const rarityByCollection = {};
+  const rarityByCollectionFolder = {};
   const collectionCount = sortedCollections.length;
   for (let index = 0; index < collectionCount; index += 1) {
     const [collectionFolder] = sortedCollections[index];
     const percentile = collectionCount > 1 ? index / (collectionCount - 1) : 1;
-    rarityByCollection[collectionFolder] = toCollectionRarity(percentile);
-  }
-
-  const byNumber = {};
-  for (const entry of parsedEntries) {
-    byNumber[entry.number] = {
-      number: entry.number,
-      path: entry.path,
-      name: entry.name,
-      collection: entry.collection,
-      rarity: rarityByCollection[entry.collectionFolder] ?? DEFAULT_RARITY,
-    };
+    rarityByCollectionFolder[collectionFolder] = toCollectionRarity(percentile);
   }
 
   const missingIndexes = [];
@@ -136,20 +119,22 @@ const buildIndex = async () => {
     throw new Error(`Missing indexes detected (first 20): ${missingIndexes.join(", ")}`);
   }
 
-  const indexPayload = {
-    total: indexedPaths.length,
+  const total = indexedPaths.length;
+
+  const runtimePayload = {
+    total,
     paths: indexedPaths,
+    rarityByCollectionFolder,
   };
 
-  const manifestPayload = {
-    total: indexedPaths.length,
-    byNumber,
+  const statsPayload = {
+    total,
   };
 
-  await writeFile(INDEX_OUTPUT_FILE, JSON.stringify(indexPayload));
-  await writeFile(MANIFEST_OUTPUT_FILE, JSON.stringify(manifestPayload));
-  console.log(`Generated ${INDEX_OUTPUT_FILE} with ${indexedPaths.length} GIF entries`);
-  console.log(`Generated ${MANIFEST_OUTPUT_FILE} with ${indexedPaths.length} GIF entries`);
+  await writeFile(RUNTIME_OUTPUT_FILE, JSON.stringify(runtimePayload));
+  await writeFile(STATS_OUTPUT_FILE, JSON.stringify(statsPayload));
+  console.log(`Generated ${RUNTIME_OUTPUT_FILE} with ${total} GIF entries`);
+  console.log(`Generated ${STATS_OUTPUT_FILE} with ${total} GIF entries`);
 };
 
 await buildIndex();

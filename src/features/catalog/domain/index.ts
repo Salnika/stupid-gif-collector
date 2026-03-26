@@ -1,1 +1,1 @@
-export type { GifCatalogEntry, GifIndex, GifManifest } from "./catalogTypes";
+export type { CatalogRuntime, CatalogStats, GifCatalogEntry } from "./catalogTypes";

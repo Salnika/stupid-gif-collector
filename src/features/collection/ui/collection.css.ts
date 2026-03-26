@@ -190,6 +190,11 @@ export const shareButton = style({
   gridColumn: "1 / -1",
 });
 
+export const gridSentinel = style({
+  width: "100%",
+  height: "1px",
+});
+
 export const modal = style({
   position: "fixed",
   inset: 0,

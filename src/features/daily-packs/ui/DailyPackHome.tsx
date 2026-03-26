@@ -24,7 +24,7 @@ import {
   type InfiniteScrollUpdate,
 } from "../../../hooks/useLenisInfiniteScroll";
 import { getNextPackGenerationTime } from "../application/dailyPackSession";
-import { loadManifest } from "../../catalog/data";
+import { loadCatalogEntries } from "../../catalog/data";
 import type { GifCatalogEntry } from "../../catalog/domain";
 import { useUnlockedGifsStore } from "../../collection/data/unlockedGifsStore";
 import { useDailyPacksStore } from "../data/dailyPacksStore";
@@ -155,14 +155,11 @@ export function DailyPackHome() {
 
     const loadCatalog = async () => {
       try {
-        const manifest = await loadManifest();
+        const nextEntries = await loadCatalogEntries();
         if (cancelled) {
           return;
         }
 
-        const nextEntries = Object.values(manifest.byNumber).sort(
-          (left, right) => left.number - right.number,
-        );
         const nextEntryByNumber: Record<number, GifCatalogEntry> = {};
 
         for (const entry of nextEntries) {

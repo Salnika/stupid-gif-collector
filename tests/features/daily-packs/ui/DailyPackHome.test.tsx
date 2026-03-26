@@ -18,25 +18,41 @@ vi.mock("../../../../src/hooks/useLoaderRotation", () => ({
   }),
 }));
 
-const createManifest = (size: number) => {
-  const byNumber: Record<number, GifCatalogEntry> = {};
+const createCatalogData = (size: number) => {
+  const entries: GifCatalogEntry[] = [];
+  const rarityByCollectionFolder: Record<string, GifCatalogEntry["rarity"]> = {
+    test_common: "common",
+    test_rare: "rare",
+    test_epic: "epic",
+    test_legendary: "legendary",
+  };
 
   for (let index = 0; index < size; index += 1) {
-    byNumber[index + 1] = {
-      number: index + 1,
-      path: `/collections/test/#${index + 1}-gif-${index + 1}.gif`,
-      name: `GIF ${index + 1}`,
-      collection: "test",
-      rarity:
-        index < 10
-          ? (["rare", "epic", "legendary"][index % 3] as GifCatalogEntry["rarity"])
-          : "common",
-    };
+    const number = index + 1;
+    const collectionFolder =
+      index < 4
+        ? "test_rare"
+        : index < 7
+          ? "test_epic"
+          : index < 10
+            ? "test_legendary"
+            : "test_common";
+    entries.push({
+      number,
+      path: `/collections/${collectionFolder}/%23${number}-gif-${number}.gif`,
+      name: `GIF ${number}`,
+      collection: collectionFolder.replace(/_/g, " "),
+      rarity: rarityByCollectionFolder[collectionFolder],
+    });
   }
 
   return {
-    total: size,
-    byNumber,
+    entries,
+    runtime: {
+      total: size,
+      paths: entries.map((entry) => entry.path),
+      rarityByCollectionFolder,
+    },
   };
 };
 
@@ -66,7 +82,8 @@ describe("DailyPackHome", () => {
   });
 
   it("opens the active pack and lets the user favorite a revealed reward", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(createResponse(createManifest(60)));
+    const catalog = createCatalogData(60);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(createResponse(catalog.runtime));
 
     render(
       <MemoryRouter>
@@ -131,8 +148,8 @@ describe("DailyPackHome", () => {
   });
 
   it("adds a new pack to the queue after five minutes", async () => {
-    const manifest = createManifest(60);
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(createResponse(manifest));
+    const catalog = createCatalogData(60);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(createResponse(catalog.runtime));
 
     render(
       <MemoryRouter>
@@ -148,7 +165,7 @@ describe("DailyPackHome", () => {
       useDailyPacksStore
         .getState()
         .ensureTodaySession(
-          Object.values(manifest.byNumber),
+          catalog.entries,
           new Date((session?.lastGeneratedAt ?? Date.now()) + PACK_GENERATION_INTERVAL_MS),
         );
     });
@@ -157,8 +174,8 @@ describe("DailyPackHome", () => {
   });
 
   it("scrolls the carousel when wheeling over the interactive controls", async () => {
-    const manifest = createManifest(60);
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(createResponse(manifest));
+    const catalog = createCatalogData(60);
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(createResponse(catalog.runtime));
 
     render(
       <MemoryRouter>
@@ -173,7 +190,7 @@ describe("DailyPackHome", () => {
       useDailyPacksStore
         .getState()
         .ensureTodaySession(
-          Object.values(manifest.byNumber),
+          catalog.entries,
           new Date((session?.lastGeneratedAt ?? Date.now()) + PACK_GENERATION_INTERVAL_MS),
         );
     });

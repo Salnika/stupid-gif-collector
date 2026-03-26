@@ -1,8 +1,8 @@
-import type { KeyboardEventHandler, ReactNode } from "react";
+import type { KeyboardEventHandler, ReactNode, RefObject } from "react";
 import type { GifCatalogEntry } from "../../features/catalog/domain";
 import { encodeAssetPath } from "../../lib/gifMeta";
 import { rarityBorder } from "../styles/recipes.css";
-import { RefractiveArticle } from "./RefractiveSurface";
+import { RefractiveArticle, type RefractiveActivationMode } from "./RefractiveSurface";
 import { RarityBadge } from "./RarityBadge";
 import * as styles from "./GifCard.css";
 
@@ -23,6 +23,8 @@ type GifCardProps = {
   onSelectKeyDown?: KeyboardEventHandler<HTMLElement>;
   actions?: ReactNode;
   className?: string;
+  activationMode?: RefractiveActivationMode;
+  visibilityRoot?: RefObject<HTMLElement | null>;
 };
 
 const withClassName = (...classes: Array<string | false | null | undefined>): string =>
@@ -40,6 +42,8 @@ export function GifCard({
   onSelectKeyDown,
   actions,
   className,
+  activationMode = "always",
+  visibilityRoot,
 }: GifCardProps) {
   const content = (
     <>
@@ -67,6 +71,8 @@ export function GifCard({
         className={styles.image}
         src={encodeAssetPath(entry.path)}
         alt={imageAlt ?? `GIF #${entry.number}`}
+        loading="lazy"
+        decoding="async"
       />
       <div className={styles.meta}>
         <p className={styles.number}>#{entry.number}</p>
@@ -84,6 +90,8 @@ export function GifCard({
     <RefractiveArticle
       className={withClassName(styles.card({ interactive }), rarityBorder[entry.rarity], className)}
       data-rarity={entry.rarity}
+      activationMode={activationMode}
+      visibilityRoot={visibilityRoot}
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : undefined}
       aria-label={interactive ? `Open GIF #${entry.number}` : undefined}

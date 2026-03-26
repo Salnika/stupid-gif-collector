@@ -9,7 +9,7 @@ import {
   type RefObject,
   type SetStateAction,
 } from "react";
-import { loadManifest } from "../../catalog/data";
+import { loadCatalogStats } from "../../catalog/data";
 import type { GifCatalogEntry } from "../../catalog/domain";
 import { useUnlockedGifsStore } from "../data/unlockedGifsStore";
 import type { CollectionGifEntry, TransferStatus } from "../domain";
@@ -19,7 +19,7 @@ import {
 } from "../services/collectionTransferService";
 import { confirmDialog, clearBrowserTimeout, restartTimeout } from "../../../shared/lib/browser";
 import { copyGifEmbedCode, copyGifShareUrl } from "../../../shared/services/shareService";
-import { GIF_RARITIES, isGifRarity, type GifRarity } from "../../../lib/rarity";
+import { GIF_RARITIES, type GifRarity } from "../../../lib/rarity";
 import { createCollectionEntries, filterCollectionEntries } from "./collectionSelectors";
 
 const DEFAULT_TOTAL_GIFS = 27901;
@@ -81,7 +81,6 @@ export const useCollectionViewModel = (): CollectionViewModel => {
   const shareResetTimerRef = useRef<number | null>(null);
 
   const [catalogTotal, setCatalogTotal] = useState(DEFAULT_TOTAL_GIFS);
-  const [rarityByNumber, setRarityByNumber] = useState<Record<number, GifRarity>>({});
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [collectionFilters, setCollectionFilters] = useState<string[]>([]);
   const [rarityFilters, setRarityFilters] = useState<GifRarity[]>([]);
@@ -96,26 +95,14 @@ export const useCollectionViewModel = (): CollectionViewModel => {
 
     const loadCatalogData = async () => {
       try {
-        const manifest = await loadManifest();
+        const stats = await loadCatalogStats();
         if (cancelled) {
           return;
         }
 
-        setCatalogTotal(manifest.total);
-        const nextRarities: Record<number, GifRarity> = {};
-
-        for (const [rawKey, entry] of Object.entries(manifest.byNumber)) {
-          const number = Number.parseInt(rawKey, 10);
-          if (!Number.isFinite(number) || number < 1 || !entry || !isGifRarity(entry.rarity)) {
-            continue;
-          }
-
-          nextRarities[number] = entry.rarity;
-        }
-
-        setRarityByNumber(nextRarities);
+        setCatalogTotal(stats.total);
       } catch {
-        // Keep fallback total/rarity when manifest loading fails.
+        // Keep fallback total when stats loading fails.
       }
     };
 
@@ -127,8 +114,8 @@ export const useCollectionViewModel = (): CollectionViewModel => {
   }, []);
 
   const sortedUnlockedGifs = useMemo<CollectionGifEntry[]>(
-    () => createCollectionEntries(unlockedByNumber, favoriteByNumber, rarityByNumber),
-    [favoriteByNumber, rarityByNumber, unlockedByNumber],
+    () => createCollectionEntries(unlockedByNumber, favoriteByNumber),
+    [favoriteByNumber, unlockedByNumber],
   );
 
   const availableCollections = useMemo(() => {

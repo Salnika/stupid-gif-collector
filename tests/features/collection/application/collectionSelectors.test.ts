@@ -27,12 +27,12 @@ describe("collectionSelectors", () => {
     },
   };
 
-  it("builds sorted entries with favorite and rarity overrides", () => {
-    const entries = createCollectionEntries(unlockedByNumber, { 1: true }, { 1: "legendary" });
+  it("builds sorted entries with favorite state and persisted rarity", () => {
+    const entries = createCollectionEntries(unlockedByNumber, { 1: true });
 
     expect(entries.map((entry) => entry.number)).toEqual([1, 2]);
     expect(entries[0]).toMatchObject({
-      rarity: "legendary",
+      rarity: "common",
       isFavorite: true,
       count: 3,
     });
@@ -40,9 +40,14 @@ describe("collectionSelectors", () => {
 
   it("filters by favorites, collection and rarity", () => {
     const entries = createCollectionEntries(
-      unlockedByNumber,
+      {
+        ...unlockedByNumber,
+        1: {
+          ...unlockedByNumber[1],
+          rarity: "rare",
+        },
+      },
       { 1: true },
-      { 1: "rare", 2: "common" },
     );
 
     const filtered = filterCollectionEntries(entries, {

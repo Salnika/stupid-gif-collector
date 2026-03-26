@@ -1,6 +1,7 @@
 export {
   getEntryByNumber,
-  loadIndex,
-  loadManifest,
+  loadCatalogEntries,
+  loadCatalogRuntime,
+  loadCatalogStats,
   resetCatalogRepositoryCache,
 } from "./catalogRepository";

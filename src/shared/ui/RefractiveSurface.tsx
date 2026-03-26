@@ -1,6 +1,14 @@
 import { refractive } from "@hashintel/refractive";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useUiPreferencesStore } from "../data/uiPreferencesStore";
+import { supportsRefractiveSurface } from "./refractiveSupport";
 
 type RefractionConfig = {
   radius: number;
@@ -9,6 +17,13 @@ type RefractionConfig = {
   glassThickness: number;
   refractiveIndex: number;
   specularOpacity: number;
+};
+
+export type RefractiveActivationMode = "always" | "visible-only";
+
+type SurfaceVisibilityProps = {
+  activationMode?: RefractiveActivationMode;
+  visibilityRoot?: RefObject<HTMLElement | null>;
 };
 
 const cardRefraction: RefractionConfig = {
@@ -20,102 +35,146 @@ const cardRefraction: RefractionConfig = {
   specularOpacity: 1,
 };
 
-let refractiveSupport: boolean | null = null;
+const VISIBLE_ROOT_MARGIN = "400px 0px";
 
-const supportsBackdropFilter = (): boolean => {
-  if (typeof CSS === "undefined" || typeof CSS.supports !== "function") {
-    return true;
-  }
+const observedSurfaceWrapperStyle = {
+  display: "block",
+  width: "100%",
+} as const;
 
-  return (
-    CSS.supports("backdrop-filter", "blur(0)") || CSS.supports("-webkit-backdrop-filter", "blur(0)")
-  );
-};
+type RefractiveArticleProps = ComponentPropsWithoutRef<"article"> &
+  SurfaceVisibilityProps & {
+    children: ReactNode;
+    refraction?: Partial<RefractionConfig>;
+  };
 
-const prefersReducedTransparency = (): boolean => {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
-    return false;
-  }
-
-  return window.matchMedia("(prefers-reduced-transparency: reduce)").matches;
-};
-
-const supportsRefractiveSurface = (): boolean => {
-  if (refractiveSupport !== null) {
-    return refractiveSupport;
-  }
-
-  if (
-    typeof window === "undefined" ||
-    typeof document === "undefined" ||
-    typeof ResizeObserver === "undefined" ||
-    typeof ImageData === "undefined" ||
-    prefersReducedTransparency() ||
-    !supportsBackdropFilter()
-  ) {
-    refractiveSupport = false;
-    return refractiveSupport;
-  }
-
-  try {
-    const context = document.createElement("canvas").getContext("2d");
-    refractiveSupport = context !== null;
-  } catch {
-    refractiveSupport = false;
-  }
-
-  return refractiveSupport;
-};
-
-type RefractiveArticleProps = ComponentPropsWithoutRef<"article"> & {
-  children: ReactNode;
-  refraction?: Partial<RefractionConfig>;
-};
-
-type RefractiveDivProps = ComponentPropsWithoutRef<"div"> & {
-  children: ReactNode;
-  refraction?: Partial<RefractionConfig>;
-};
+type RefractiveDivProps = ComponentPropsWithoutRef<"div"> &
+  SurfaceVisibilityProps & {
+    children: ReactNode;
+    refraction?: Partial<RefractionConfig>;
+  };
 
 const resolveRefraction = (refraction?: Partial<RefractionConfig>): RefractionConfig => ({
   ...cardRefraction,
   ...refraction,
 });
 
-export function RefractiveArticle({ children, refraction, ...props }: RefractiveArticleProps) {
+const useVisibleActivation = (
+  activationMode: RefractiveActivationMode,
+  visibilityRoot: RefObject<HTMLElement | null> | undefined,
+  canUseRefractive: boolean,
+) => {
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [isNearViewport, setIsNearViewport] = useState(activationMode !== "visible-only");
+
+  useEffect(() => {
+    if (activationMode !== "visible-only" || !canUseRefractive) {
+      setIsNearViewport(true);
+      return;
+    }
+
+    const wrapper = wrapperRef.current;
+    if (!wrapper || typeof IntersectionObserver === "undefined") {
+      setIsNearViewport(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        setIsNearViewport(Boolean(entry?.isIntersecting || (entry?.intersectionRatio ?? 0) > 0));
+      },
+      {
+        root: visibilityRoot?.current ?? null,
+        rootMargin: VISIBLE_ROOT_MARGIN,
+      },
+    );
+
+    observer.observe(wrapper);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [activationMode, canUseRefractive, visibilityRoot]);
+
+  return {
+    wrapperRef,
+    isNearViewport,
+  };
+};
+
+export function RefractiveArticle({
+  children,
+  refraction,
+  activationMode = "always",
+  visibilityRoot,
+  ...props
+}: RefractiveArticleProps) {
   const isLiquidGlassDisabled = useUiPreferencesStore((state) => state.isLiquidGlassDisabled);
   const resolvedRefraction = resolveRefraction(refraction);
+  const canUseRefractive = !isLiquidGlassDisabled && supportsRefractiveSurface();
+  const { wrapperRef, isNearViewport } = useVisibleActivation(
+    activationMode,
+    visibilityRoot,
+    canUseRefractive,
+  );
 
-  if (isLiquidGlassDisabled || !supportsRefractiveSurface()) {
-    return (
+  const content =
+    canUseRefractive && (activationMode === "always" || isNearViewport) ? (
+      <refractive.article {...props} data-refractive="enabled" refraction={resolvedRefraction}>
+        {children}
+      </refractive.article>
+    ) : (
       <article {...props} data-refractive="fallback">
         {children}
       </article>
     );
+
+  if (activationMode !== "visible-only" || !canUseRefractive) {
+    return content;
   }
 
   return (
-    <refractive.article {...props} data-refractive="enabled" refraction={resolvedRefraction}>
-      {children}
-    </refractive.article>
+    <div ref={wrapperRef} style={observedSurfaceWrapperStyle}>
+      {content}
+    </div>
   );
 }
 
-export function RefractiveDiv({ children, refraction, ...props }: RefractiveDivProps) {
+export function RefractiveDiv({
+  children,
+  refraction,
+  activationMode = "always",
+  visibilityRoot,
+  ...props
+}: RefractiveDivProps) {
   const isLiquidGlassDisabled = useUiPreferencesStore((state) => state.isLiquidGlassDisabled);
   const resolvedRefraction = resolveRefraction(refraction);
+  const canUseRefractive = !isLiquidGlassDisabled && supportsRefractiveSurface();
+  const { wrapperRef, isNearViewport } = useVisibleActivation(
+    activationMode,
+    visibilityRoot,
+    canUseRefractive,
+  );
 
-  if (isLiquidGlassDisabled || !supportsRefractiveSurface()) {
-    return (
+  const content =
+    canUseRefractive && (activationMode === "always" || isNearViewport) ? (
+      <refractive.div {...props} data-refractive="enabled" refraction={resolvedRefraction}>
+        {children}
+      </refractive.div>
+    ) : (
       <div {...props} data-refractive="fallback">
         {children}
       </div>
     );
+
+  if (activationMode !== "visible-only" || !canUseRefractive) {
+    return content;
   }
 
   return (
-    <refractive.div {...props} data-refractive="enabled" refraction={resolvedRefraction}>
-      {children}
-    </refractive.div>
+    <div ref={wrapperRef} style={observedSurfaceWrapperStyle}>
+      {content}
+    </div>
   );
 }

@@ -3,12 +3,13 @@ import path from "node:path";
 
 const PROJECT_ROOT = process.cwd();
 const DIST_ROOT = path.join(PROJECT_ROOT, "dist");
-const MANIFEST_PATH = path.join(DIST_ROOT, "collections-manifest.json");
+const RUNTIME_PATH = path.join(DIST_ROOT, "catalog-runtime.json");
 const SHARE_ROOT = path.join(DIST_ROOT, "share");
 const DEFAULT_SITE_ORIGIN = "https://salnika.github.io";
 const DEFAULT_SITE_BASE_PATH = "/stupid-gif-collector";
 const ALLOWED_RARITIES = new Set(["common", "uncommon", "rare", "epic", "legendary"]);
 const WRITE_BATCH_SIZE = 160;
+const PREFIX_PATTERN = /^(?:#)?(\d+)-(.*)$/i;
 
 const escapeHtml = (value) =>
   String(value)
@@ -17,6 +18,14 @@ const escapeHtml = (value) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+
+const safeDecodeURIComponent = (value) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
 
 const normalizeOrigin = (value) => value.trim().replace(/\/+$/, "");
 
@@ -41,6 +50,29 @@ const toBasePath = (basePath, assetPath) => {
 
 const toAbsoluteUrl = (origin, basePath, assetPath) =>
   `${origin}${toBasePath(basePath, assetPath)}`;
+
+const toDisplayText = (value) => value.replace(/[_-]+/g, " ").trim();
+
+const parseGifMeta = (assetPath, fallbackNumber) => {
+  const cleanPath = assetPath.split("?")[0].split("#")[0];
+  const segments = cleanPath
+    .split("/")
+    .filter((segment) => segment.length > 0)
+    .map(safeDecodeURIComponent);
+  const fileName = segments[segments.length - 1] ?? "";
+  const collectionFolder = segments[segments.length - 2] ?? "unknown";
+  const fileBase = fileName.replace(/\.[^.]+$/, "");
+  const match = fileBase.match(PREFIX_PATTERN);
+  const number = match ? Number.parseInt(match[1], 10) : fallbackNumber;
+  const rawName = match ? match[2] : fileBase;
+
+  return {
+    number: Number.isFinite(number) && number > 0 ? number : fallbackNumber,
+    name: toDisplayText(rawName),
+    collection: toDisplayText(collectionFolder),
+    collectionFolder,
+  };
+};
 
 const toRarityLabel = (rarity) => {
   if (typeof rarity !== "string" || !ALLOWED_RARITIES.has(rarity)) {
@@ -166,48 +198,37 @@ const renderSharePage = ({
 };
 
 const build = async () => {
-  const manifestRaw = await readFile(MANIFEST_PATH, "utf8");
-  const manifest = JSON.parse(manifestRaw);
-  const byNumber = manifest?.byNumber;
+  const runtimeRaw = await readFile(RUNTIME_PATH, "utf8");
+  const runtime = JSON.parse(runtimeRaw);
+  const paths = Array.isArray(runtime?.paths)
+    ? runtime.paths.filter((value) => typeof value === "string")
+    : [];
+  const rarityByCollectionFolder =
+    runtime?.rarityByCollectionFolder && typeof runtime.rarityByCollectionFolder === "object"
+      ? runtime.rarityByCollectionFolder
+      : null;
 
-  if (!byNumber || typeof byNumber !== "object") {
-    throw new Error('Invalid collections-manifest.json: missing "byNumber" object');
+  if (paths.length === 0 || !rarityByCollectionFolder) {
+    throw new Error('Invalid catalog-runtime.json: missing "paths" or "rarityByCollectionFolder"');
   }
 
   const { siteOrigin, basePath } = resolveSiteConfig();
   const homeUrl = toBasePath(basePath, "/");
-  const entries = Object.entries(byNumber)
-    .map(([rawNumber, rawValue]) => {
-      const number = Number.parseInt(rawNumber, 10);
-      if (!Number.isFinite(number) || number < 1 || !rawValue || typeof rawValue !== "object") {
-        return null;
-      }
-
-      const value = rawValue;
-      const pathValue = typeof value.path === "string" ? value.path : "";
-      if (!pathValue) {
-        return null;
-      }
-
-      const name =
-        typeof value.name === "string" && value.name.trim().length > 0
-          ? value.name
-          : `GIF #${number}`;
-      const collection =
-        typeof value.collection === "string" && value.collection.trim().length > 0
-          ? value.collection
-          : "Unknown collection";
-      const rarityLabel = toRarityLabel(value.rarity);
+  const entries = paths
+    .map((assetPath, index) => {
+      const number = index + 1;
+      const parsedMeta = parseGifMeta(assetPath, number);
+      const rarityLabel = toRarityLabel(rarityByCollectionFolder[parsedMeta.collectionFolder]);
       const sharePath = `/share/${number}/`;
-      const imageUrl = toAbsoluteUrl(siteOrigin, basePath, pathValue);
+      const imageUrl = toAbsoluteUrl(siteOrigin, basePath, assetPath);
       const shareUrl = toAbsoluteUrl(siteOrigin, basePath, sharePath);
 
       return {
         number,
         html: renderSharePage({
           number,
-          name,
-          collection,
+          name: parsedMeta.name,
+          collection: parsedMeta.collection,
           rarityLabel,
           imageUrl,
           shareUrl,
@@ -215,7 +236,6 @@ const build = async () => {
         }),
       };
     })
-    .filter((entry) => entry !== null)
     .sort((a, b) => a.number - b.number);
 
   await mkdir(SHARE_ROOT, { recursive: true });

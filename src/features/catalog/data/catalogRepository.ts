@@ -1,87 +1,62 @@
 import { parseGifMeta, toBaseAssetPath } from "../../../lib/gifMeta";
-import { DEFAULT_GIF_RARITY, isGifRarity } from "../../../lib/rarity";
-import type { GifCatalogEntry, GifIndex, GifManifest } from "../domain/catalogTypes";
+import { DEFAULT_GIF_RARITY, isGifRarity, type GifRarity } from "../../../lib/rarity";
+import type { CatalogRuntime, CatalogStats, GifCatalogEntry } from "../domain/catalogTypes";
 
-type ManifestPayload = {
-  total?: unknown;
-  byNumber?: unknown;
-};
-
-type IndexPayload = {
+type CatalogRuntimePayload = {
   total?: unknown;
   paths?: unknown;
+  rarityByCollectionFolder?: unknown;
 };
 
-const MANIFEST_URL = "/collections-manifest.json";
-const INDEX_URL = "/collections-index.json";
+type CatalogStatsPayload = {
+  total?: unknown;
+};
 
-let manifestCache: GifManifest | null = null;
-let indexCache: GifIndex | null = null;
+const CATALOG_RUNTIME_URL = "/catalog-runtime.json";
+const CATALOG_STATS_URL = "/catalog-stats.json";
+
+let catalogRuntimeCache: CatalogRuntime | null = null;
+let catalogStatsCache: CatalogStats | null = null;
+let catalogEntriesCache: GifCatalogEntry[] | null = null;
 
 const toPositiveInt = (value: unknown, fallback: number): number =>
   typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
 
-const normalizeManifestEntry = (
-  fallbackNumber: number,
-  rawValue: unknown,
-): GifCatalogEntry | null => {
-  if (!rawValue || typeof rawValue !== "object") {
-    return null;
+const normalizePaths = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.length > 0)
+    : [];
+
+const normalizeRarityByCollectionFolder = (value: unknown): Record<string, GifRarity> => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
   }
 
-  const value = rawValue as {
-    number?: unknown;
-    path?: unknown;
-    name?: unknown;
-    collection?: unknown;
-    rarity?: unknown;
-  };
-
-  if (typeof value.path !== "string" || value.path.length === 0) {
-    return null;
-  }
-
-  const entryNumber = toPositiveInt(value.number, fallbackNumber);
-  const parsedMeta = parseGifMeta(value.path, entryNumber);
-
-  return {
-    number: entryNumber,
-    path: value.path,
-    name:
-      typeof value.name === "string" && value.name.trim().length > 0
-        ? value.name.trim()
-        : parsedMeta.name,
-    collection:
-      typeof value.collection === "string" && value.collection.trim().length > 0
-        ? value.collection.trim()
-        : parsedMeta.collection,
-    rarity: isGifRarity(value.rarity) ? value.rarity : DEFAULT_GIF_RARITY,
-  };
-};
-
-const createManifestFromIndex = (index: GifIndex): GifManifest => {
-  const byNumber: Record<number, GifCatalogEntry> = {};
-
-  for (let offset = 0; offset < index.paths.length; offset += 1) {
-    const number = offset + 1;
-    const path = index.paths[offset];
-    if (!path) {
+  const rarityByCollectionFolder: Record<string, GifRarity> = {};
+  for (const [collectionFolder, rarity] of Object.entries(value)) {
+    if (!collectionFolder || !isGifRarity(rarity)) {
       continue;
     }
 
-    const parsedMeta = parseGifMeta(path, number);
-    byNumber[number] = {
-      number,
-      path,
-      name: parsedMeta.name,
-      collection: parsedMeta.collection,
-      rarity: DEFAULT_GIF_RARITY,
-    };
+    rarityByCollectionFolder[collectionFolder] = rarity;
   }
 
+  return rarityByCollectionFolder;
+};
+
+const toCatalogEntry = (
+  path: string,
+  fallbackNumber: number,
+  rarityByCollectionFolder: Record<string, GifRarity>,
+): GifCatalogEntry => {
+  const parsedMeta = parseGifMeta(path, fallbackNumber);
+
   return {
-    total: Math.max(index.total, Object.keys(byNumber).length),
-    byNumber,
+    number: parsedMeta.number,
+    path,
+    name: parsedMeta.name,
+    collection: parsedMeta.collection,
+    rarity: rarityByCollectionFolder[parsedMeta.collectionFolder] ?? DEFAULT_GIF_RARITY,
   };
 };
 
@@ -94,65 +69,61 @@ const fetchJson = async (assetPath: string): Promise<unknown> => {
   return response.json();
 };
 
-export const loadIndex = async (): Promise<GifIndex> => {
-  if (indexCache) {
-    return indexCache;
+export const loadCatalogRuntime = async (): Promise<CatalogRuntime> => {
+  if (catalogRuntimeCache) {
+    return catalogRuntimeCache;
   }
 
-  const payload = (await fetchJson(INDEX_URL)) as IndexPayload;
-  const paths = Array.isArray(payload.paths)
-    ? payload.paths.filter((item): item is string => typeof item === "string" && item.length > 0)
-    : [];
+  const payload = (await fetchJson(CATALOG_RUNTIME_URL)) as CatalogRuntimePayload;
+  const paths = normalizePaths(payload.paths);
 
-  indexCache = {
+  catalogRuntimeCache = {
     total: toPositiveInt(payload.total, paths.length),
     paths,
+    rarityByCollectionFolder: normalizeRarityByCollectionFolder(payload.rarityByCollectionFolder),
   };
 
-  return indexCache;
+  return catalogRuntimeCache;
 };
 
-export const loadManifest = async (): Promise<GifManifest> => {
-  if (manifestCache) {
-    return manifestCache;
+export const loadCatalogStats = async (): Promise<CatalogStats> => {
+  if (catalogStatsCache) {
+    return catalogStatsCache;
+  }
+
+  if (catalogRuntimeCache) {
+    catalogStatsCache = {
+      total: catalogRuntimeCache.total,
+    };
+    return catalogStatsCache;
   }
 
   try {
-    const payload = (await fetchJson(MANIFEST_URL)) as ManifestPayload;
-    const byNumber: Record<number, GifCatalogEntry> = {};
-
-    if (payload.byNumber && typeof payload.byNumber === "object") {
-      for (const [rawKey, rawValue] of Object.entries(payload.byNumber)) {
-        const keyNumber = Number.parseInt(rawKey, 10);
-        if (!Number.isFinite(keyNumber) || keyNumber < 1) {
-          continue;
-        }
-
-        const normalized = normalizeManifestEntry(keyNumber, rawValue);
-        if (!normalized) {
-          continue;
-        }
-
-        byNumber[normalized.number] = normalized;
-      }
-    }
-
-    const normalizedTotal = toPositiveInt(payload.total, Object.keys(byNumber).length);
-    manifestCache = {
-      total: Math.max(normalizedTotal, Object.keys(byNumber).length),
-      byNumber,
+    const payload = (await fetchJson(CATALOG_STATS_URL)) as CatalogStatsPayload;
+    catalogStatsCache = {
+      total: toPositiveInt(payload.total, 0),
     };
-
-    if (Object.keys(manifestCache.byNumber).length > 0) {
-      return manifestCache;
-    }
+    return catalogStatsCache;
   } catch {
-    // Fallback to index JSON below.
+    const runtime = await loadCatalogRuntime();
+    catalogStatsCache = {
+      total: runtime.total,
+    };
+    return catalogStatsCache;
+  }
+};
+
+export const loadCatalogEntries = async (): Promise<GifCatalogEntry[]> => {
+  if (catalogEntriesCache) {
+    return catalogEntriesCache;
   }
 
-  const fallbackIndex = await loadIndex();
-  manifestCache = createManifestFromIndex(fallbackIndex);
-  return manifestCache;
+  const runtime = await loadCatalogRuntime();
+  catalogEntriesCache = runtime.paths.map((path, offset) =>
+    toCatalogEntry(path, offset + 1, runtime.rarityByCollectionFolder),
+  );
+
+  return catalogEntriesCache;
 };
 
 export const getEntryByNumber = async (number: number): Promise<GifCatalogEntry | null> => {
@@ -160,29 +131,17 @@ export const getEntryByNumber = async (number: number): Promise<GifCatalogEntry 
     return null;
   }
 
-  const manifest = await loadManifest();
-  const fromManifest = manifest.byNumber[number];
-  if (fromManifest) {
-    return fromManifest;
-  }
-
-  const index = await loadIndex();
-  const path = index.paths[number - 1];
+  const runtime = await loadCatalogRuntime();
+  const path = runtime.paths[number - 1];
   if (typeof path !== "string" || path.length === 0) {
     return null;
   }
 
-  const parsedMeta = parseGifMeta(path, number);
-  return {
-    number,
-    path,
-    name: parsedMeta.name,
-    collection: parsedMeta.collection,
-    rarity: DEFAULT_GIF_RARITY,
-  };
+  return toCatalogEntry(path, number, runtime.rarityByCollectionFolder);
 };
 
 export const resetCatalogRepositoryCache = () => {
-  manifestCache = null;
-  indexCache = null;
+  catalogRuntimeCache = null;
+  catalogStatsCache = null;
+  catalogEntriesCache = null;
 };

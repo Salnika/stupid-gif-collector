@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { CollectionFilters } from "./CollectionFilters";
 import { CollectionGrid } from "./CollectionGrid";
 import { CollectionHeader } from "./CollectionHeader";
@@ -6,10 +7,11 @@ import { useCollectionViewModel } from "../application/useCollectionViewModel";
 import * as styles from "./collection.css";
 
 export function MyCollectionPageView() {
+  const scrollRootRef = useRef<HTMLElement | null>(null);
   const viewModel = useCollectionViewModel();
 
   return (
-    <main className={styles.page}>
+    <main className={styles.page} ref={scrollRootRef}>
       <section className={styles.container}>
         <CollectionHeader
           unlockedSummary={viewModel.unlockedSummary}
@@ -48,6 +50,7 @@ export function MyCollectionPageView() {
         ) : (
           <CollectionGrid
             gifs={viewModel.filteredUnlockedGifs}
+            visibilityRoot={scrollRootRef}
             copiedEmbedFor={viewModel.copiedEmbedFor}
             copiedShareFor={viewModel.copiedShareFor}
             onSelectGif={viewModel.openSelectedGif}
