@@ -2,6 +2,7 @@ import type { KeyboardEventHandler, ReactNode } from "react";
 import type { GifCatalogEntry } from "../../features/catalog/domain";
 import { encodeAssetPath } from "../../lib/gifMeta";
 import { rarityBorder } from "../styles/recipes.css";
+import { RefractiveArticle } from "./RefractiveSurface";
 import { RarityBadge } from "./RarityBadge";
 import * as styles from "./GifCard.css";
 
@@ -40,15 +41,8 @@ export function GifCard({
   actions,
   className,
 }: GifCardProps) {
-  return (
-    <article
-      className={withClassName(styles.card({ interactive }), rarityBorder[entry.rarity], className)}
-      role={interactive ? "button" : undefined}
-      tabIndex={interactive ? 0 : undefined}
-      aria-label={interactive ? `Open GIF #${entry.number}` : undefined}
-      onClick={onSelect}
-      onKeyDown={onSelectKeyDown}
-    >
+  const content = (
+    <>
       {count && count >= 2 ? <span className={styles.countBadge}>x{count}</span> : null}
 
       {typeof isFavorite === "boolean" && onToggleFavorite && favoriteLabels ? (
@@ -83,6 +77,20 @@ export function GifCard({
         </p>
       </div>
       {actions ? <div className={styles.actions}>{actions}</div> : null}
-    </article>
+    </>
+  );
+
+  return (
+    <RefractiveArticle
+      className={withClassName(styles.card({ interactive }), rarityBorder[entry.rarity], className)}
+      data-rarity={entry.rarity}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      aria-label={interactive ? `Open GIF #${entry.number}` : undefined}
+      onClick={onSelect}
+      onKeyDown={onSelectKeyDown}
+    >
+      {content}
+    </RefractiveArticle>
   );
 }

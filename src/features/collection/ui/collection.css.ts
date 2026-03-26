@@ -154,6 +154,26 @@ export const grid = style({
 
 export const uniformGifCard = style({});
 
+globalStyle(`.${uniformGifCard}[data-rarity="common"]`, {
+  background: "linear-gradient(180deg, rgba(143, 160, 183, 0.12) 0%, rgba(7, 14, 26, 0.1) 100%)",
+});
+
+globalStyle(`.${uniformGifCard}[data-rarity="uncommon"]`, {
+  background: "linear-gradient(180deg, rgba(85, 208, 145, 0.14) 0%, rgba(7, 14, 26, 0.1) 100%)",
+});
+
+globalStyle(`.${uniformGifCard}[data-rarity="rare"]`, {
+  background: "linear-gradient(180deg, rgba(93, 168, 255, 0.14) 0%, rgba(7, 14, 26, 0.1) 100%)",
+});
+
+globalStyle(`.${uniformGifCard}[data-rarity="epic"]`, {
+  background: "linear-gradient(180deg, rgba(199, 137, 255, 0.14) 0%, rgba(7, 14, 26, 0.1) 100%)",
+});
+
+globalStyle(`.${uniformGifCard}[data-rarity="legendary"]`, {
+  background: "linear-gradient(180deg, rgba(246, 197, 111, 0.15) 0%, rgba(7, 14, 26, 0.1) 100%)",
+});
+
 globalStyle(`.${uniformGifCard} .${gifCardStyles.image}`, {
   height: "220px",
   minHeight: "220px",
@@ -184,6 +204,26 @@ export const modal = style({
 export const modalCard = style({
   width: "min(92vw, 660px)",
   maxHeight: "90vh",
+});
+
+globalStyle(`.${modalCard}[data-rarity="common"]`, {
+  background: "linear-gradient(180deg, rgba(143, 160, 183, 0.12) 0%, rgba(7, 14, 26, 0.1) 100%)",
+});
+
+globalStyle(`.${modalCard}[data-rarity="uncommon"]`, {
+  background: "linear-gradient(180deg, rgba(85, 208, 145, 0.14) 0%, rgba(7, 14, 26, 0.1) 100%)",
+});
+
+globalStyle(`.${modalCard}[data-rarity="rare"]`, {
+  background: "linear-gradient(180deg, rgba(93, 168, 255, 0.14) 0%, rgba(7, 14, 26, 0.1) 100%)",
+});
+
+globalStyle(`.${modalCard}[data-rarity="epic"]`, {
+  background: "linear-gradient(180deg, rgba(199, 137, 255, 0.14) 0%, rgba(7, 14, 26, 0.1) 100%)",
+});
+
+globalStyle(`.${modalCard}[data-rarity="legendary"]`, {
+  background: "linear-gradient(180deg, rgba(246, 197, 111, 0.15) 0%, rgba(7, 14, 26, 0.1) 100%)",
 });
 
 export const modalActions = style({

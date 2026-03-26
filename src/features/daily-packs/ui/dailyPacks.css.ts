@@ -610,21 +610,30 @@ export const dialogBackdrop = style({
   alignItems: "center",
   justifyItems: "center",
   padding: "max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom))",
-  background: "rgba(2, 3, 9, 0.72)",
-  backdropFilter: "blur(20px)",
+  background: "transparent",
+  backdropFilter: "none",
   pointerEvents: "auto",
 });
 
 export const dialogPanel = style({
   position: "relative",
   width: "min(96vw, 1120px)",
+  borderRadius: "1.8rem",
+  overflow: "hidden",
+  border: "1px solid rgba(255, 244, 215, 0.16)",
+  background: "transparent",
+  boxShadow: "0 34px 70px rgba(0, 0, 0, 0.24)",
+  selectors: {
+    '&[data-refractive="fallback"]': {
+      backgroundColor: "rgba(7, 14, 26, 0.72)",
+    },
+  },
+});
+
+export const dialogPanelContent = style({
   maxHeight: "92vh",
   padding: "1.1rem 1.1rem 1.3rem",
   overflow: "auto",
-  borderRadius: "1.8rem",
-  border: "1px solid rgba(255, 244, 215, 0.12)",
-  background: "linear-gradient(180deg, rgba(14, 17, 30, 0.96) 0%, rgba(8, 10, 19, 0.98) 100%)",
-  boxShadow: "0 34px 70px rgba(0, 0, 0, 0.44)",
 });
 
 export const dialogHeader = style({
@@ -680,8 +689,9 @@ export const dialogArena = style({
   marginTop: "1rem",
   overflow: "hidden",
   borderRadius: "1.45rem",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
   background:
-    "radial-gradient(circle at top, rgba(250, 204, 21, 0.1) 0%, transparent 28%), radial-gradient(circle at center, rgba(99, 102, 241, 0.14) 0%, rgba(7, 10, 20, 0) 55%), linear-gradient(180deg, rgba(6, 8, 17, 0.86) 0%, rgba(4, 5, 11, 0.98) 100%)",
+    "radial-gradient(circle at top, rgba(250, 204, 21, 0.12) 0%, transparent 28%), radial-gradient(circle at center, rgba(99, 102, 241, 0.1) 0%, rgba(7, 10, 20, 0) 55%), linear-gradient(180deg, rgba(6, 8, 17, 0.2) 0%, rgba(4, 5, 11, 0.3) 100%)",
 });
 
 export const dialogFlash = style({
@@ -1063,6 +1073,7 @@ export const dialogCardFront = style({
   backfaceVisibility: "hidden",
   transform: "rotateY(180deg)",
   isolation: "isolate",
+  boxShadow: `0 0 0 1px ${vars.color.border}, 0 16px 40px rgba(0, 0, 0, 0.46)`,
 });
 
 export const dialogStaticCard = style({
@@ -1072,7 +1083,7 @@ export const dialogStaticCard = style({
   height: "100%",
   transform: "none",
   backfaceVisibility: "visible",
-  boxShadow: "0 18px 26px rgba(0, 0, 0, 0.36)",
+  boxShadow: `0 0 0 1px ${vars.color.border}, 0 16px 40px rgba(0, 0, 0, 0.46)`,
   transition: "transform 180ms ease, box-shadow 180ms ease",
 });
 
@@ -1092,14 +1103,24 @@ export const dialogPreviewBackdrop = style({
   display: "grid",
   placeItems: "center",
   padding: "1.2rem",
-  background: "rgba(2, 6, 23, 0.58)",
-  backdropFilter: "blur(4px)",
+  background: "transparent",
+  backdropFilter: "none",
 });
 
 export const dialogPreviewPanel = style({
   display: "grid",
   justifyItems: "center",
   gap: vars.space.sm,
+  padding: "1rem",
+  borderRadius: "1.35rem",
+  border: "1px solid rgba(255, 244, 215, 0.16)",
+  background: "transparent",
+  boxShadow: "0 26px 48px rgba(0, 0, 0, 0.2)",
+  selectors: {
+    '&[data-refractive="fallback"]': {
+      backgroundColor: "rgba(7, 14, 26, 0.68)",
+    },
+  },
 });
 
 export const dialogPreviewCard = style({
@@ -1109,78 +1130,7 @@ export const dialogPreviewCard = style({
   aspectRatio: dialogRewardAspectRatio,
   transform: "none",
   backfaceVisibility: "visible",
-  boxShadow: "0 28px 40px rgba(0, 0, 0, 0.42)",
-});
-
-globalStyle(`${dialogCardFront}::before`, {
-  content: "",
-  position: "absolute",
-  inset: 0,
-  backgroundPosition: "center",
-  backgroundRepeat: "repeat",
-  backgroundSize: "256px 256px",
-  opacity: 0.22,
-  pointerEvents: "none",
-  zIndex: 1,
-});
-
-globalStyle(`${dialogCardFront}::after`, {
-  content: "",
-  position: "absolute",
-  inset: 0,
-  backgroundImage: `url("${holoNoise}")`,
-  backgroundPosition: "center",
-  backgroundRepeat: "repeat",
-  backgroundSize: "256px 256px",
-  opacity: 0.1,
-  mixBlendMode: "screen",
-  pointerEvents: "none",
-  zIndex: 1,
-});
-
-globalStyle(`${dialogCardFront}[data-rarity="common"]::before`, {
-  backgroundImage: `url("${paperStrongCommon}")`,
-  opacity: 0.22,
-});
-
-globalStyle(`${dialogCardFront}[data-rarity="common"]::after`, {
-  opacity: 0.08,
-});
-
-globalStyle(`${dialogCardFront}[data-rarity="uncommon"]::before`, {
-  backgroundImage: `url("${paperStrongUncommon}")`,
-  opacity: 0.24,
-});
-
-globalStyle(`${dialogCardFront}[data-rarity="uncommon"]::after`, {
-  opacity: 0.1,
-});
-
-globalStyle(`${dialogCardFront}[data-rarity="rare"]::before`, {
-  backgroundImage: `url("${brushedMetal}")`,
-  opacity: 0.18,
-});
-
-globalStyle(`${dialogCardFront}[data-rarity="rare"]::after`, {
-  opacity: 0.14,
-});
-
-globalStyle(`${dialogCardFront}[data-rarity="epic"]::before`, {
-  backgroundImage: `url("${brushedMetal}")`,
-  opacity: 0.2,
-});
-
-globalStyle(`${dialogCardFront}[data-rarity="epic"]::after`, {
-  opacity: 0.18,
-});
-
-globalStyle(`${dialogCardFront}[data-rarity="legendary"]::before`, {
-  backgroundImage: `url("${brushedMetal}")`,
-  opacity: 0.24,
-});
-
-globalStyle(`${dialogCardFront}[data-rarity="legendary"]::after`, {
-  opacity: 0.22,
+  boxShadow: `0 0 0 1px ${vars.color.border}, 0 16px 40px rgba(0, 0, 0, 0.46)`,
 });
 
 export const dialogCardImage = style({

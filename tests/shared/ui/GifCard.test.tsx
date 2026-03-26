@@ -21,6 +21,14 @@ describe("GifCard", () => {
     expect(screen.getByText("x2")).toBeTruthy();
   });
 
+  it("falls back to a plain article when refraction support is unavailable", () => {
+    render(<GifCard entry={entry} />);
+
+    expect(screen.getByAltText("GIF #12").closest("article")?.getAttribute("data-refractive")).toBe(
+      "fallback",
+    );
+  });
+
   it("triggers favorite callback", () => {
     const onToggleFavorite = vi.fn();
 

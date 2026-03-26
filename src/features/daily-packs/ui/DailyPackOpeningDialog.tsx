@@ -8,6 +8,7 @@ import {
 import { encodeAssetPath } from "../../../lib/gifMeta";
 import { clearBrowserTimeout } from "../../../shared/lib/browser";
 import { actionButton, rarityBorder } from "../../../shared/styles/recipes.css";
+import { RefractiveDiv } from "../../../shared/ui/RefractiveSurface";
 import { RarityBadge } from "../../../shared/ui";
 import type { GifCatalogEntry } from "../../catalog/domain";
 import { useUnlockedGifsStore } from "../../collection/data/unlockedGifsStore";
@@ -229,135 +230,135 @@ export function DailyPackOpeningDialog({
       aria-modal="true"
       aria-label={title}
     >
-      <section className={styles.dialogPanel}>
-        <div className={styles.dialogHeader}>
-          <div>
-            <p className={styles.dialogEyebrow}>{dayLabel}</p>
-            <h2 className={styles.dialogTitle}>{title}</h2>
-            <p className={styles.dialogMeta}>
-              {isReadyToOpen
-                ? isGoldDailyPack(pack)
-                  ? "Click the gold pack to tear it open. It only contains rare, epic, and legendary GIFs, and rewards are only granted once from this screen."
-                  : "Click the pack to tear it open. Rewards are only granted once you open it from this screen."
-                : animateOnOpen
-                  ? isRevealed
-                    ? "Five GIFs are now in your collection. You can review this pack again any time today."
-                    : "The wrapper tears open first, then the five rewards fan out and flip face-up."
-                  : "This pack is already open. Reviewing it does not grant rewards again."}
-            </p>
+      <RefractiveDiv className={styles.dialogPanel}>
+        <section className={styles.dialogPanelContent}>
+          <div className={styles.dialogHeader}>
+            <div>
+              <p className={styles.dialogEyebrow}>{dayLabel}</p>
+              <h2 className={styles.dialogTitle}>{title}</h2>
+              <p className={styles.dialogMeta}>
+                {isReadyToOpen
+                  ? isGoldDailyPack(pack)
+                    ? "Click the gold pack to tear it open. It only contains rare, epic, and legendary GIFs, and rewards are only granted once from this screen."
+                    : "Click the pack to tear it open. Rewards are only granted once you open it from this screen."
+                  : animateOnOpen
+                    ? isRevealed
+                      ? "Five GIFs are now in your collection. You can review this pack again any time today."
+                      : "The wrapper tears open first, then the five rewards fan out and flip face-up."
+                    : "This pack is already open. Reviewing it does not grant rewards again."}
+              </p>
+            </div>
+
+            <button type="button" className={styles.closeButton} onClick={onClose}>
+              Close
+            </button>
           </div>
 
-          <button type="button" className={styles.closeButton} onClick={onClose}>
-            Close
-          </button>
-        </div>
+          {isReadyToOpen ? (
+            <div className={styles.dialogArena}>
+              <button
+                type="button"
+                className={styles.dialogPackTrigger}
+                onClick={onOpenPack}
+                aria-label={`Click ${packDisplayName} to open`}
+              >
+                <div className={styles.dialogPackStage} aria-hidden="true">
+                  <div className={styles.dialogPackBodyPiece}>
+                    <div className={styles.dialogPackShell} style={getPackMaskStyle(packArtwork)}>
+                      <PackArtworkSurface artwork={packArtwork} />
+                    </div>
+                  </div>
+                  <div className={styles.dialogPackTopPiece}>
+                    <div className={styles.dialogPackShell} style={getPackMaskStyle(packArtwork)}>
+                      <PackArtworkSurface artwork={packArtwork} />
+                    </div>
+                  </div>
+                </div>
 
-        {isReadyToOpen ? (
-          <div className={styles.dialogArena}>
-            <button
-              type="button"
-              className={styles.dialogPackTrigger}
-              onClick={onOpenPack}
-              aria-label={`Click ${packDisplayName} to open`}
-            >
+                <div className={styles.dialogPackPrompt}>
+                  <span className={styles.dialogPackPromptBadge}>Click to open</span>
+                  <p className={styles.dialogPackPromptText}>
+                    Tear the wrapper to reveal the five GIFs inside.
+                  </p>
+                </div>
+              </button>
+            </div>
+          ) : animateOnOpen ? (
+            <div className={styles.dialogArena}>
+              <div className={styles.dialogFlash} />
+
               <div className={styles.dialogPackStage} aria-hidden="true">
                 <div className={styles.dialogPackBodyPiece}>
                   <div className={styles.dialogPackShell} style={getPackMaskStyle(packArtwork)}>
                     <PackArtworkSurface artwork={packArtwork} />
                   </div>
                 </div>
+                <div className={styles.dialogPackMouth} />
                 <div className={styles.dialogPackTopPiece}>
                   <div className={styles.dialogPackShell} style={getPackMaskStyle(packArtwork)}>
                     <PackArtworkSurface artwork={packArtwork} />
                   </div>
                 </div>
+                <div className={styles.dialogCut} />
               </div>
 
-              <div className={styles.dialogPackPrompt}>
-                <span className={styles.dialogPackPromptBadge}>Click to open</span>
-                <p className={styles.dialogPackPromptText}>
-                  Tear the wrapper to reveal the five GIFs inside.
-                </p>
-              </div>
-            </button>
-          </div>
-        ) : animateOnOpen ? (
-          <div className={styles.dialogArena}>
-            <div className={styles.dialogFlash} />
-
-            <div className={styles.dialogPackStage} aria-hidden="true">
-              <div className={styles.dialogPackBodyPiece}>
-                <div className={styles.dialogPackShell} style={getPackMaskStyle(packArtwork)}>
-                  <PackArtworkSurface artwork={packArtwork} />
-                </div>
-              </div>
-              <div className={styles.dialogPackMouth} />
-              <div className={styles.dialogPackTopPiece}>
-                <div className={styles.dialogPackShell} style={getPackMaskStyle(packArtwork)}>
-                  <PackArtworkSurface artwork={packArtwork} />
-                </div>
-              </div>
-              <div className={styles.dialogCut} />
-            </div>
-
-            <ul className={styles.dialogCardsFan}>
-              {rewards.map(({ entry, reveal }, index) => (
-                <li
-                  className={styles.dialogCardSlot}
-                  style={CARD_SPREADS[index]}
-                  key={entry.number}
-                  data-interactive={canInspectRewards}
-                >
-                  <div
-                    className={styles.dialogCardButton}
-                    onClick={() => openRewardPreview({ entry, reveal })}
-                    onKeyDown={(event) => handleRewardKeyDown(event, { entry, reveal })}
-                    role={canInspectRewards ? "button" : undefined}
-                    tabIndex={canInspectRewards ? 0 : -1}
-                    aria-disabled={!canInspectRewards}
-                    data-disabled={!canInspectRewards}
-                    aria-label={`Open reward GIF #${entry.number}`}
+              <ul className={styles.dialogCardsFan}>
+                {rewards.map(({ entry, reveal }, index) => (
+                  <li
+                    className={styles.dialogCardSlot}
+                    style={CARD_SPREADS[index]}
+                    key={entry.number}
+                    data-interactive={canInspectRewards}
                   >
-                    <div className={styles.dialogCardInner}>
-                      <div className={styles.dialogCardBack} data-rarity={entry.rarity}>
-                        <span className={styles.dialogCardBackLabel}>GIF Drop</span>
-                      </div>
-                      <div
-                        className={`${styles.dialogCardFront} ${rarityBorder[entry.rarity]}`}
-                        data-rarity={entry.rarity}
-                      >
-                        <PackRewardCard entry={entry} count={reveal.count} isNew={reveal.isNew} />
+                    <div
+                      className={styles.dialogCardButton}
+                      onClick={() => openRewardPreview({ entry, reveal })}
+                      onKeyDown={(event) => handleRewardKeyDown(event, { entry, reveal })}
+                      role={canInspectRewards ? "button" : undefined}
+                      tabIndex={canInspectRewards ? 0 : -1}
+                      aria-disabled={!canInspectRewards}
+                      data-disabled={!canInspectRewards}
+                      aria-label={`Open reward GIF #${entry.number}`}
+                    >
+                      <div className={styles.dialogCardInner}>
+                        <div className={styles.dialogCardBack} data-rarity={entry.rarity}>
+                          <span className={styles.dialogCardBackLabel}>GIF Drop</span>
+                        </div>
+                        <div
+                          className={`${styles.dialogCardFront} ${rarityBorder[entry.rarity]}`}
+                          data-rarity={entry.rarity}
+                        >
+                          <PackRewardCard entry={entry} count={reveal.count} isNew={reveal.isNew} />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <div className={styles.dialogStaticGrid}>
-            {rewards.map(({ entry, reveal }) => (
-              <div
-                className={styles.dialogStaticCardButton}
-                onClick={() => openRewardPreview({ entry, reveal })}
-                onKeyDown={(event) => handleRewardKeyDown(event, { entry, reveal })}
-                role="button"
-                tabIndex={0}
-                aria-label={`Open reward GIF #${entry.number}`}
-                key={entry.number}
-              >
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div className={styles.dialogStaticGrid}>
+              {rewards.map(({ entry, reveal }) => (
                 <div
-                  className={`${styles.dialogCardFront} ${styles.dialogStaticCard} ${rarityBorder[entry.rarity]}`}
-                  data-rarity={entry.rarity}
+                  className={styles.dialogStaticCardButton}
+                  onClick={() => openRewardPreview({ entry, reveal })}
+                  onKeyDown={(event) => handleRewardKeyDown(event, { entry, reveal })}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open reward GIF #${entry.number}`}
+                  key={entry.number}
                 >
-                  <PackRewardCard entry={entry} count={reveal.count} isNew={reveal.isNew} />
+                  <div
+                    className={`${styles.dialogCardFront} ${styles.dialogStaticCard} ${rarityBorder[entry.rarity]}`}
+                    data-rarity={entry.rarity}
+                  >
+                    <PackRewardCard entry={entry} count={reveal.count} isNew={reveal.isNew} />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        {!isReadyToOpen ? (
           <div className={styles.dialogActions}>
             <p className={styles.dialogHint}>{hintText}</p>
             <div className={styles.dialogActionGroup}>
@@ -379,12 +380,12 @@ export function DailyPackOpeningDialog({
               </button>
             </div>
           </div>
-        ) : null}
-      </section>
+        </section>
+      </RefractiveDiv>
 
       {selectedReward ? (
         <div className={styles.dialogPreviewBackdrop} onClick={() => setSelectedReward(null)}>
-          <div
+          <RefractiveDiv
             className={styles.dialogPreviewPanel}
             role="dialog"
             aria-modal="true"
@@ -421,7 +422,7 @@ export function DailyPackOpeningDialog({
                 Close
               </button>
             </div>
-          </div>
+          </RefractiveDiv>
         </div>
       ) : null}
     </div>

@@ -8,9 +8,15 @@ export const card = recipe({
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
+    isolation: "isolate",
     borderRadius: vars.radius.lg,
-    background: vars.color.panel,
+    background: "transparent",
     boxShadow: `0 0 0 1px ${vars.color.border}, 0 16px 40px rgba(0, 0, 0, 0.46)`,
+    selectors: {
+      '&[data-refractive="fallback"]': {
+        backgroundColor: "rgba(7, 14, 26, 0.58)",
+      },
+    },
   },
   variants: {
     interactive: {
@@ -37,7 +43,7 @@ export const image = style({
   minHeight: "180px",
   maxHeight: "min(64vh, 520px)",
   objectFit: "contain",
-  background: "rgba(0, 0, 0, 0.24)",
+  background: "transparent",
 });
 
 export const meta = style({

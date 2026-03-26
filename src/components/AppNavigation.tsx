@@ -1,10 +1,18 @@
 import { NavLink } from "react-router-dom";
+import { useUiPreferencesStore } from "../shared/data/uiPreferencesStore";
+import { RefractiveDiv } from "../shared/ui/RefractiveSurface";
 import * as styles from "./AppNavigation.css";
 
 const navClassName = ({ isActive }: { isActive: boolean }) =>
   isActive ? `${styles.navButton} ${styles.navButtonActive}` : styles.navButton;
 
 export function AppNavigation() {
+  const isLiquidGlassDisabled = useUiPreferencesStore((state) => state.isLiquidGlassDisabled);
+  const toggleLiquidGlassDisabled = useUiPreferencesStore(
+    (state) => state.toggleLiquidGlassDisabled,
+  );
+  const isLiquidGlassEnabled = !isLiquidGlassDisabled;
+
   return (
     <>
       <nav className={styles.nav} aria-label="Main navigation">
@@ -14,6 +22,54 @@ export function AppNavigation() {
         <NavLink to="/my-collection" className={navClassName}>
           My collection
         </NavLink>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isLiquidGlassEnabled}
+          title={isLiquidGlassEnabled ? "Liquid glass on" : "Liquid glass off"}
+          className={
+            isLiquidGlassEnabled
+              ? `${styles.navToggleButton} ${styles.navToggleButtonActive}`
+              : styles.navToggleButton
+          }
+          aria-label="Liquid glass"
+          onClick={toggleLiquidGlassDisabled}
+        >
+          <span
+            aria-hidden="true"
+            className={
+              isLiquidGlassEnabled
+                ? `${styles.navToggleLabel} ${styles.navToggleLabelActive}`
+                : styles.navToggleLabel
+            }
+          >
+            glass
+          </span>
+          <span
+            aria-hidden="true"
+            className={
+              isLiquidGlassEnabled
+                ? `${styles.navToggleThumb} ${styles.navToggleThumbActive}`
+                : styles.navToggleThumb
+            }
+          >
+            <RefractiveDiv
+              aria-hidden="true"
+              className={styles.navToggleThumbSurface}
+              refraction={{
+                radius: 20,
+                blur: 3,
+                bezelWidth: 10,
+                glassThickness: 40,
+                refractiveIndex: 9,
+                specularOpacity: 1,
+              }}
+            >
+              {null}
+            </RefractiveDiv>
+          </span>
+          <span className={styles.visuallyHidden}>Toggle liquid glass</span>
+        </button>
       </nav>
 
       <a
