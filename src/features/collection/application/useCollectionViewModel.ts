@@ -84,7 +84,7 @@ export const useCollectionViewModel = (): CollectionViewModel => {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [collectionFilters, setCollectionFilters] = useState<string[]>([]);
   const [rarityFilters, setRarityFilters] = useState<GifRarity[]>([]);
-  const [selectedGif, setSelectedGif] = useState<CollectionGifEntry | null>(null);
+  const [selectedGifNumber, setSelectedGifNumber] = useState<number | null>(null);
   const [copiedEmbedFor, setCopiedEmbedFor] = useState<number | null>(null);
   const [copiedShareFor, setCopiedShareFor] = useState<number | null>(null);
   const [isTransferPending, setIsTransferPending] = useState(false);
@@ -118,6 +118,11 @@ export const useCollectionViewModel = (): CollectionViewModel => {
     [favoriteByNumber, unlockedByNumber],
   );
 
+  const selectedGif = useMemo(
+    () => sortedUnlockedGifs.find((gif) => gif.number === selectedGifNumber) ?? null,
+    [selectedGifNumber, sortedUnlockedGifs],
+  );
+
   const availableCollections = useMemo(() => {
     const uniqueCollections = new Set(sortedUnlockedGifs.map((gif) => gif.collection));
     return Array.from(uniqueCollections).sort((a, b) => a.localeCompare(b));
@@ -149,7 +154,7 @@ export const useCollectionViewModel = (): CollectionViewModel => {
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setSelectedGif(null);
+        setSelectedGifNumber(null);
       }
     };
 
@@ -201,8 +206,8 @@ export const useCollectionViewModel = (): CollectionViewModel => {
     return `${rarityFilters.length} selected`;
   }, [rarityFilters]);
 
-  const openSelectedGif = (gif: CollectionGifEntry) => setSelectedGif(gif);
-  const closeSelectedGif = () => setSelectedGif(null);
+  const openSelectedGif = (gif: CollectionGifEntry) => setSelectedGifNumber(gif.number);
+  const closeSelectedGif = () => setSelectedGifNumber(null);
 
   const toggleCollectionFilter = (collection: string) => {
     setCollectionFilters((current) =>
@@ -315,7 +320,7 @@ export const useCollectionViewModel = (): CollectionViewModel => {
       }
 
       const result = replaceCollectionFromImport(entries);
-      setSelectedGif(null);
+      setSelectedGifNumber(null);
       setShowFavoritesOnly(false);
       setCollectionFilters([]);
       setRarityFilters([]);

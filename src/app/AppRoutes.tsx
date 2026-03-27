@@ -11,6 +11,11 @@ const MyCollectionPage = lazy(async () => {
   return { default: module.MyCollectionPage };
 });
 
+const TradeUpPage = lazy(async () => {
+  const module = await import("../pages/TradeUpPage");
+  return { default: module.TradeUpPage };
+});
+
 const SharedGifPage = lazy(async () => {
   const module = await import("../pages/SharedGifPage");
   return { default: module.SharedGifPage };
@@ -27,6 +32,7 @@ export function AppRoutes() {
         <Route path="/" element={<HomePage />} />
         <Route path="/my-collection" element={<MyCollectionPage />} />
         <Route path="/ma-collection" element={<Navigate to="/my-collection" replace />} />
+        <Route path="/trade-up" element={<TradeUpPage />} />
         <Route path="/share/:gifNumber" element={<SharedGifPage />} />
         <Route path="*" element={<HomePage />} />
       </Routes>

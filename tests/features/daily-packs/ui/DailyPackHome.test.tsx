@@ -130,13 +130,15 @@ describe("DailyPackHome", () => {
     expect(rewardDialog).toBeTruthy();
 
     await act(async () => {
-      fireEvent.click(within(rewardDialog).getByRole("button", { name: /add to favorites/i }));
+      fireEvent.click(
+        within(rewardDialog).getByRole("button", { name: /add gif #\d+ to favorites/i }),
+      );
     });
 
     expect(useUnlockedGifsStore.getState().favoriteByNumber[rewardNumber]).toBe(true);
 
     await act(async () => {
-      fireEvent.click(within(rewardDialog).getByRole("button", { name: /^close$/i }));
+      fireEvent.click(within(rewardDialog).getByRole("button", { name: /close preview/i }));
     });
 
     await act(async () => {

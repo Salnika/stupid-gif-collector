@@ -22,6 +22,9 @@ export function AppNavigation() {
         <NavLink to="/my-collection" className={navClassName}>
           My collection
         </NavLink>
+        <NavLink to="/trade-up" className={navClassName}>
+          Trade up
+        </NavLink>
         <button
           type="button"
           role="switch"

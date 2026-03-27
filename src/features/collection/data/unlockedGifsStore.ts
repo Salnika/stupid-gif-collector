@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { DEFAULT_GIF_RARITY, isGifRarity, type GifRarity } from "../../../lib/rarity";
+import {
+  DEFAULT_GIF_RARITY,
+  getNextGifRarity,
+  isGifRarity,
+  type GifRarity,
+} from "../../../lib/rarity";
 import type { CollectionBackupEntry } from "../../../lib/collectionBackup";
 
 const normalizeGifPath = (value: string): string =>
@@ -16,7 +21,7 @@ export type UnlockedGif = {
   count: number;
 };
 
-type RegisterCaughtGifInput = {
+export type RegisterCaughtGifInput = {
   number: number;
   name: string;
   collection: string;
@@ -30,17 +35,32 @@ export type RegisterCaughtGifResult = {
   isNew: boolean;
 };
 
+export type TradeUpInput = {
+  consumedGifNumbers: number[];
+  rewardGif: RegisterCaughtGifInput;
+};
+
+export type TradeUpResult = {
+  reward: UnlockedGif;
+  rewardCount: number;
+  isNewReward: boolean;
+  sourceRarity: GifRarity;
+  targetRarity: GifRarity;
+  consumedGifNumbers: number[];
+};
+
 type UnlockedGifsState = {
   unlockedByNumber: Record<number, UnlockedGif>;
   favoriteByNumber: Record<number, true>;
   registerCaughtGif: (gif: RegisterCaughtGifInput) => RegisterCaughtGifResult;
+  tradeUpGifs: (input: TradeUpInput) => TradeUpResult;
   toggleFavorite: (gifNumber: number) => void;
   replaceCollectionFromImport: (entries: CollectionBackupEntry[]) => { imported: number };
 };
 
 export const useUnlockedGifsStore = create<UnlockedGifsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       unlockedByNumber: {},
       favoriteByNumber: {},
       registerCaughtGif: (gif) => {
@@ -88,6 +108,109 @@ export const useUnlockedGifsStore = create<UnlockedGifsState>()(
             isNew: true,
           }
         );
+      },
+      tradeUpGifs: ({ consumedGifNumbers, rewardGif }) => {
+        if (consumedGifNumbers.length !== 5) {
+          throw new Error("Trade-ups require exactly 5 GIF copies.");
+        }
+
+        if (!Number.isInteger(rewardGif.number) || rewardGif.number < 1) {
+          throw new Error("Trade-up reward is invalid.");
+        }
+
+        const state = get();
+        const selectedGifs = consumedGifNumbers.map(
+          (gifNumber) => state.unlockedByNumber[gifNumber],
+        );
+        if (selectedGifs.some((gif) => !gif)) {
+          throw new Error("One of the selected GIFs is no longer in your collection.");
+        }
+
+        const sourceRarity = selectedGifs[0]?.rarity;
+        if (!sourceRarity) {
+          throw new Error("Unable to resolve the source rarity for this trade-up.");
+        }
+
+        if (sourceRarity === "legendary") {
+          throw new Error("Legendary GIFs cannot be traded up.");
+        }
+
+        if (!selectedGifs.every((gif) => gif.rarity === sourceRarity)) {
+          throw new Error("All traded GIFs must share the same rarity.");
+        }
+
+        const targetRarity = getNextGifRarity(sourceRarity);
+        if (!targetRarity || rewardGif.rarity !== targetRarity) {
+          throw new Error("Trade-up reward must be exactly one rarity higher.");
+        }
+
+        const requiredCountByNumber = consumedGifNumbers.reduce<Record<number, number>>(
+          (counts, gifNumber) => {
+            counts[gifNumber] = (counts[gifNumber] ?? 0) + 1;
+            return counts;
+          },
+          {},
+        );
+
+        for (const [gifNumberText, requiredCount] of Object.entries(requiredCountByNumber)) {
+          const gifNumber = Number.parseInt(gifNumberText, 10);
+          const currentCount = state.unlockedByNumber[gifNumber]?.count ?? 0;
+
+          if (currentCount < requiredCount) {
+            throw new Error("You do not have enough copies to complete this trade-up.");
+          }
+        }
+
+        const nextUnlockedByNumber = { ...state.unlockedByNumber };
+        const nextFavoriteByNumber = { ...state.favoriteByNumber };
+
+        for (const [gifNumberText, requiredCount] of Object.entries(requiredCountByNumber)) {
+          const gifNumber = Number.parseInt(gifNumberText, 10);
+          const currentGif = nextUnlockedByNumber[gifNumber];
+          if (!currentGif) {
+            throw new Error("One of the selected GIFs is no longer in your collection.");
+          }
+
+          const nextCount = currentGif.count - requiredCount;
+          if (nextCount > 0) {
+            nextUnlockedByNumber[gifNumber] = {
+              ...currentGif,
+              count: nextCount,
+            };
+            continue;
+          }
+
+          delete nextUnlockedByNumber[gifNumber];
+          delete nextFavoriteByNumber[gifNumber];
+        }
+
+        const existingReward = nextUnlockedByNumber[rewardGif.number];
+        const rewardCount = (existingReward?.count ?? 0) + 1;
+        const reward: UnlockedGif = {
+          number: rewardGif.number,
+          name: rewardGif.name,
+          collection: rewardGif.collection,
+          rarity: rewardGif.rarity,
+          path: normalizeGifPath(rewardGif.path),
+          unlockedAt: existingReward?.unlockedAt ?? Date.now(),
+          count: rewardCount,
+        };
+
+        nextUnlockedByNumber[reward.number] = reward;
+
+        set({
+          unlockedByNumber: nextUnlockedByNumber,
+          favoriteByNumber: nextFavoriteByNumber,
+        });
+
+        return {
+          reward,
+          rewardCount,
+          isNewReward: !existingReward,
+          sourceRarity,
+          targetRarity,
+          consumedGifNumbers: consumedGifNumbers.slice(),
+        };
       },
       toggleFavorite: (gifNumber) => {
         if (!Number.isInteger(gifNumber) || gifNumber < 1) {

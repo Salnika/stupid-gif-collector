@@ -8,8 +8,8 @@ import {
 import { encodeAssetPath } from "../../../lib/gifMeta";
 import { clearBrowserTimeout } from "../../../shared/lib/browser";
 import { actionButton, rarityBorder } from "../../../shared/styles/recipes.css";
+import { GifPreviewDialog, RarityBadge } from "../../../shared/ui";
 import { RefractiveDiv } from "../../../shared/ui/RefractiveSurface";
-import { RarityBadge } from "../../../shared/ui";
 import type { GifCatalogEntry } from "../../catalog/domain";
 import { useUnlockedGifsStore } from "../../collection/data/unlockedGifsStore";
 import { isGoldDailyPack, type DailyPack } from "../domain";
@@ -384,46 +384,20 @@ export function DailyPackOpeningDialog({
       </RefractiveDiv>
 
       {selectedReward ? (
-        <div className={styles.dialogPreviewBackdrop} onClick={() => setSelectedReward(null)}>
-          <RefractiveDiv
-            className={styles.dialogPreviewPanel}
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Reward GIF #${selectedReward.entry.number}`}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div
-              className={`${styles.dialogCardFront} ${styles.dialogPreviewCard} ${rarityBorder[selectedReward.entry.rarity]}`}
-              data-rarity={selectedReward.entry.rarity}
-            >
-              <PackRewardCard
-                entry={selectedReward.entry}
-                count={selectedReward.reveal.count}
-                isNew={selectedReward.reveal.isNew}
-              />
-            </div>
-
-            <div className={styles.dialogActionGroup}>
-              <button
-                type="button"
-                className={actionButton({ tone: "primary" })}
-                onClick={() => toggleFavorite(selectedReward.entry.number)}
-              >
-                {favoriteByNumber[selectedReward.entry.number]
-                  ? "Remove from favorites"
-                  : "Add to favorites"}
-              </button>
-
-              <button
-                type="button"
-                className={actionButton({ tone: "secondary" })}
-                onClick={() => setSelectedReward(null)}
-              >
-                Close
-              </button>
-            </div>
-          </RefractiveDiv>
-        </div>
+        <GifPreviewDialog
+          entry={selectedReward.entry}
+          count={selectedReward.reveal.count}
+          isNew={selectedReward.reveal.isNew}
+          isFavorite={Boolean(favoriteByNumber[selectedReward.entry.number])}
+          favoriteLabels={{
+            add: `Add GIF #${selectedReward.entry.number} to favorites`,
+            remove: `Remove GIF #${selectedReward.entry.number} from favorites`,
+          }}
+          imageAlt={`Reward GIF #${selectedReward.entry.number}`}
+          dialogLabel={`Reward GIF #${selectedReward.entry.number}`}
+          onToggleFavorite={() => toggleFavorite(selectedReward.entry.number)}
+          onClose={() => setSelectedReward(null)}
+        />
       ) : null}
     </div>
   );

@@ -61,7 +61,11 @@ export function MyCollectionPageView() {
           />
         )}
 
-        <CollectionModal selectedGif={viewModel.selectedGif} onClose={viewModel.closeSelectedGif} />
+        <CollectionModal
+          selectedGif={viewModel.selectedGif}
+          onClose={viewModel.closeSelectedGif}
+          onToggleFavorite={viewModel.toggleFavorite}
+        />
       </section>
     </main>
   );

@@ -16,6 +16,8 @@ type GifCardProps = {
   count?: number;
   imageAlt?: string;
   interactive?: boolean;
+  interactiveLabel?: string;
+  isDisabled?: boolean;
   isFavorite?: boolean;
   favoriteLabels?: FavoriteLabels;
   onToggleFavorite?: () => void;
@@ -35,6 +37,8 @@ export function GifCard({
   count,
   imageAlt,
   interactive = false,
+  interactiveLabel,
+  isDisabled = false,
   isFavorite,
   favoriteLabels,
   onToggleFavorite,
@@ -93,10 +97,11 @@ export function GifCard({
       activationMode={activationMode}
       visibilityRoot={visibilityRoot}
       role={interactive ? "button" : undefined}
-      tabIndex={interactive ? 0 : undefined}
-      aria-label={interactive ? `Open GIF #${entry.number}` : undefined}
-      onClick={onSelect}
-      onKeyDown={onSelectKeyDown}
+      tabIndex={interactive && !isDisabled ? 0 : undefined}
+      aria-disabled={interactive ? isDisabled : undefined}
+      aria-label={interactive ? (interactiveLabel ?? `Open GIF #${entry.number}`) : undefined}
+      onClick={isDisabled ? undefined : onSelect}
+      onKeyDown={isDisabled ? undefined : onSelectKeyDown}
     >
       {content}
     </RefractiveArticle>
