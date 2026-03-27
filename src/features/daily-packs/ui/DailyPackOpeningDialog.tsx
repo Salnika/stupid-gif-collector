@@ -89,6 +89,7 @@ function PackRewardCard({ entry, count, isNew }: PackRewardCardProps) {
         className={styles.dialogCardImage}
         src={encodeAssetPath(entry.path)}
         alt={`Reward GIF #${entry.number}`}
+        draggable="false"
       />
       <div className={styles.dialogCardBody}>
         <div className={styles.dialogCardTopRow}>
@@ -109,7 +110,13 @@ function PackRewardCard({ entry, count, isNew }: PackRewardCardProps) {
 function PackArtworkSurface({ artwork }: { artwork: string }) {
   return (
     <>
-      <img className={styles.dialogPackArt} src={artwork} alt="" aria-hidden="true" />
+      <img
+        className={styles.dialogPackArt}
+        src={artwork}
+        alt=""
+        aria-hidden="true"
+        draggable="false"
+      />
       <div className={styles.dialogPackTextureMetal} aria-hidden="true" />
       <div className={styles.dialogPackTextureHolo} aria-hidden="true" />
       <div className={styles.dialogPackTextureGloss} aria-hidden="true" />

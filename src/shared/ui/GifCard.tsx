@@ -77,6 +77,7 @@ export function GifCard({
         alt={imageAlt ?? `GIF #${entry.number}`}
         loading="lazy"
         decoding="async"
+        draggable="false"
       />
       <div className={styles.meta}>
         <p className={styles.number}>#{entry.number}</p>

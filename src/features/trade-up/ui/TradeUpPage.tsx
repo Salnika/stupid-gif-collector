@@ -256,6 +256,7 @@ export function TradeUpPageView() {
                     >
                       <span className={styles.slotIndex}>Slot {index + 1}</span>
                       <img
+                        draggable="false"
                         className={styles.slotImage}
                         src={encodeAssetPath(entry.path)}
                         alt={`Selected GIF #${entry.number} in trade-up slot ${index + 1}`}
@@ -304,6 +305,7 @@ export function TradeUpPageView() {
                       src={encodeAssetPath(lastReward.path)}
                       alt=""
                       aria-hidden="true"
+                      draggable="false"
                     />
                     <p className={styles.targetName}>
                       #{lastReward.number} {lastReward.name}

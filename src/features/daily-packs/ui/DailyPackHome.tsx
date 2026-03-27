@@ -470,6 +470,7 @@ export function DailyPackHome() {
                           src={packArtwork}
                           alt=""
                           aria-hidden="true"
+                          draggable="false"
                         />
                         <div className={styles.packTextureMetal} aria-hidden="true" />
                         <div className={styles.packTextureHolo} aria-hidden="true" />
